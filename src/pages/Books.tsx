@@ -197,15 +197,22 @@ const Books = () => {
     }
   };
 
-  const handleDownload = (fileUrl: string, title: string) => {
-    const link = document.createElement("a");
-    link.href = fileUrl;
-    link.download = `${title}.pdf`;
-    link.target = "_blank";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Download started!");
+  const handleDownload = async (fileUrl: string, title: string) => {
+    try {
+      const response = await fetch(fileUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${title}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Download started!");
+    } catch (error) {
+      toast.error("Failed to download book");
+    }
   };
 
   return (
@@ -334,7 +341,7 @@ const Books = () => {
                       variant='outline'
                       size='sm'
                       onClick={() => handleDownload(book.file_url, book.title)}
-                      className='flex-1 max-md:py-2 '
+                      className='flex-1'
                     >
                       <Download className='mr-2 h-4 w-4' />
                       Download
