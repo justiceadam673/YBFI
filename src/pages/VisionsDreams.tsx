@@ -44,6 +44,8 @@ import {
   Trash2,
   Edit,
   ImageIcon,
+  Upload,
+  Wand2,
 } from "lucide-react";
 
 type VisionDream = {
@@ -72,6 +74,13 @@ const VisionsDreams = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
+
+  // Upload states
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+  const [isSuggestingScripture, setIsSuggestingScripture] = useState(false);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -156,6 +165,143 @@ const VisionsDreams = () => {
       background_image_url: "",
       audio_url: "",
     });
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a JPG, PNG, or WebP image.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `backgrounds/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('visions-backgrounds')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('visions-backgrounds')
+        .getPublicUrl(filePath);
+
+      setFormData({ ...formData, background_image_url: publicUrl });
+      toast({
+        title: "Image uploaded",
+        description: "Background image has been uploaded successfully.",
+      });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload image. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an MP3, WAV, or OGG audio file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingAudio(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `audio/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('visions-audio')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('visions-audio')
+        .getPublicUrl(filePath);
+
+      setFormData({ ...formData, audio_url: publicUrl });
+      toast({
+        title: "Audio uploaded",
+        description: "Background music has been uploaded successfully.",
+      });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload audio. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingAudio(false);
+    }
+  };
+
+  const suggestScripture = async () => {
+    if (!formData.description.trim()) {
+      toast({
+        title: "Description required",
+        description: "Please enter a description first to get scripture suggestions.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSuggestingScripture(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('suggest-scripture', {
+        body: {
+          description: formData.description,
+          title: formData.title,
+          category: formData.category,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.scripture) {
+        setFormData({ ...formData, scripture_reference: data.scripture });
+        toast({
+          title: "Scripture suggested",
+          description: "AI has suggested relevant scripture references.",
+        });
+      }
+    } catch (error) {
+      console.error('Scripture suggestion error:', error);
+      toast({
+        title: "Suggestion failed",
+        description: "Failed to get scripture suggestions. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSuggestingScripture(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -387,7 +533,29 @@ const VisionsDreams = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="scripture_reference">Scripture Reference</Label>
+                  <Label htmlFor="scripture_reference" className="flex items-center gap-2">
+                    Scripture Reference
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={suggestScripture}
+                      disabled={isSuggestingScripture || !formData.description.trim()}
+                      className="ml-auto gap-1 text-xs"
+                    >
+                      {isSuggestingScripture ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Suggesting...
+                        </>
+                      ) : (
+                        <>
+                          <Wand2 className="h-3 w-3" />
+                          AI Suggest
+                        </>
+                      )}
+                    </Button>
+                  </Label>
                   <Input
                     id="scripture_reference"
                     value={formData.scripture_reference}
@@ -413,32 +581,107 @@ const VisionsDreams = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="background_image_url" className="flex items-center gap-2">
+                    <Label className="flex items-center gap-2">
                       <ImageIcon className="h-4 w-4" />
-                      Background Image URL
+                      Background Image
                     </Label>
-                    <Input
-                      id="background_image_url"
-                      value={formData.background_image_url}
-                      onChange={(e) =>
-                        setFormData({ ...formData, background_image_url: e.target.value })
-                      }
-                      placeholder="https://example.com/image.jpg"
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleImageUpload}
+                      className="hidden"
                     />
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => imageInputRef.current?.click()}
+                        disabled={isUploadingImage}
+                        className="flex-1"
+                      >
+                        {isUploadingImage ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Upload Image
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    {formData.background_image_url && (
+                      <div className="mt-2 relative">
+                        <img
+                          src={formData.background_image_url}
+                          alt="Preview"
+                          className="h-20 w-full object-cover rounded-md"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-1 right-1 h-6 w-6 p-0"
+                          onClick={() => setFormData({ ...formData, background_image_url: "" })}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="audio_url" className="flex items-center gap-2">
+                    <Label className="flex items-center gap-2">
                       <Music className="h-4 w-4" />
-                      Background Music URL
+                      Background Music
                     </Label>
-                    <Input
-                      id="audio_url"
-                      value={formData.audio_url}
-                      onChange={(e) =>
-                        setFormData({ ...formData, audio_url: e.target.value })
-                      }
-                      placeholder="https://example.com/music.mp3"
+                    <input
+                      ref={audioInputRef}
+                      type="file"
+                      accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg"
+                      onChange={handleAudioUpload}
+                      className="hidden"
                     />
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => audioInputRef.current?.click()}
+                        disabled={isUploadingAudio}
+                        className="flex-1"
+                      >
+                        {isUploadingAudio ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Upload Audio
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    {formData.audio_url && (
+                      <div className="mt-2 flex items-center gap-2 p-2 bg-muted rounded-md">
+                        <Music className="h-4 w-4 text-primary" />
+                        <span className="text-sm text-muted-foreground flex-1 truncate">
+                          Audio uploaded
+                        </span>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => setFormData({ ...formData, audio_url: "" })}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -494,16 +737,16 @@ const VisionsDreams = () => {
             <CardContent className="p-4 text-center">
               <Clock className="h-6 w-6 mx-auto mb-2 text-purple-400" />
               <p className="text-2xl font-bold text-purple-400">
-                {visionsDreams?.filter((v) => v.status === "waiting").length || 0}
+                {visionsDreams?.filter((v) => v.status === "waiting" || v.status === "in_progress").length || 0}
               </p>
               <p className="text-xs text-muted-foreground">Awaiting</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Grid */}
+        {/* Vision/Dream Cards */}
         {isLoading ? (
-          <div className="flex justify-center py-20">
+          <div className="flex justify-center items-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : filteredVisions && filteredVisions.length > 0 ? (
@@ -511,62 +754,57 @@ const VisionsDreams = () => {
             {filteredVisions.map((vision) => (
               <Card
                 key={vision.id}
-                className="group cursor-pointer hover:shadow-xl transition-all duration-300 overflow-hidden border-border/50 hover:border-primary/50"
+                className="group cursor-pointer hover:shadow-xl transition-all duration-300 overflow-hidden border-primary/10 hover:border-primary/30"
                 onClick={() => openVisionDialog(vision)}
               >
-                <div
-                  className="h-40 bg-cover bg-center relative"
-                  style={{
-                    backgroundImage: vision.background_image_url
-                      ? `url(${vision.background_image_url})`
-                      : "linear-gradient(135deg, hsl(var(--primary)/0.3), hsl(var(--primary)/0.1))",
-                  }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/40 to-transparent" />
+                <div className="relative h-40 overflow-hidden">
+                  {vision.background_image_url ? (
+                    <img
+                      src={vision.background_image_url}
+                      alt={vision.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-primary/20 via-purple-500/20 to-blue-500/20 flex items-center justify-center">
+                      {vision.category === "vision" ? (
+                        <Sun className="h-16 w-16 text-primary/40" />
+                      ) : (
+                        <Moon className="h-16 w-16 text-primary/40" />
+                      )}
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
                   <div className="absolute top-3 left-3 flex gap-2">
-                    <Badge
-                      variant="outline"
-                      className="bg-background/80 backdrop-blur-sm"
-                    >
+                    <Badge variant="secondary" className="gap-1">
                       {getCategoryIcon(vision.category)}
-                      <span className="ml-1 capitalize">{vision.category}</span>
+                      {vision.category}
                     </Badge>
                     {vision.audio_url && (
-                      <Badge
-                        variant="outline"
-                        className="bg-background/80 backdrop-blur-sm"
-                      >
+                      <Badge variant="secondary" className="gap-1">
                         <Music className="h-3 w-3" />
                       </Badge>
                     )}
                   </div>
-                  <div className="absolute top-3 right-3">
-                    <Badge className={getStatusColor(vision.status)}>
-                      {vision.status === "in_progress"
-                        ? "In Progress"
-                        : vision.status.charAt(0).toUpperCase() +
-                          vision.status.slice(1)}
-                    </Badge>
-                  </div>
-                  <div className="absolute bottom-3 left-3 right-3">
-                    <h3 className="text-lg font-semibold text-foreground line-clamp-1">
-                      {vision.title}
-                    </h3>
-                  </div>
+                  <Badge className={`absolute top-3 right-3 ${getStatusColor(vision.status)}`}>
+                    {vision.status.replace("_", " ")}
+                  </Badge>
                 </div>
                 <CardContent className="p-4">
+                  <h3 className="font-semibold text-lg mb-2 line-clamp-1 group-hover:text-primary transition-colors">
+                    {vision.title}
+                  </h3>
                   <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
                     {vision.description}
                   </p>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
+                    <div className="flex items-center gap-1">
                       <User className="h-3 w-3" />
                       {vision.dreamer_name}
-                    </span>
-                    <span className="flex items-center gap-1">
+                    </div>
+                    <div className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
                       {new Date(vision.date_received).toLocaleDateString()}
-                    </span>
+                    </div>
                   </div>
                   {vision.scripture_reference && (
                     <div className="mt-2 flex items-center gap-1 text-xs text-primary">
@@ -581,146 +819,146 @@ const VisionsDreams = () => {
         ) : (
           <div className="text-center py-20">
             <Sparkles className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No Visions or Dreams Yet</h3>
+            <h3 className="text-xl font-semibold mb-2">No visions or dreams yet</h3>
             <p className="text-muted-foreground mb-4">
               Start recording the revelations God has given you
             </p>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Record Your First
+            <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Record Your First Vision/Dream
             </Button>
           </div>
         )}
 
-        {/* View Dialog */}
+        {/* View Vision Dialog */}
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-          <DialogContent
-            className="max-w-4xl max-h-[90vh] overflow-hidden p-0"
-            style={{
-              backgroundImage: selectedVision?.background_image_url
-                ? `url(${selectedVision.background_image_url})`
-                : undefined,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-          >
-            <div className="absolute inset-0 bg-background/85 backdrop-blur-sm" />
-            <div className="relative z-10 p-6 max-h-[90vh] overflow-y-auto">
-              <DialogHeader className="mb-6">
-                <div className="flex items-center justify-between">
-                  <DialogTitle className="text-2xl md:text-3xl flex items-center gap-3">
-                    {selectedVision?.category === "vision" ? (
-                      <Sun className="h-8 w-8 text-yellow-400" />
-                    ) : (
-                      <Moon className="h-8 w-8 text-blue-400" />
-                    )}
-                    {selectedVision?.title}
-                  </DialogTitle>
-                  <Badge className={getStatusColor(selectedVision?.status || "waiting")}>
-                    {selectedVision?.status === "in_progress"
-                      ? "In Progress"
-                      : (selectedVision?.status || "waiting").charAt(0).toUpperCase() +
-                        (selectedVision?.status || "waiting").slice(1)}
-                  </Badge>
-                </div>
-              </DialogHeader>
-
-              {selectedVision?.audio_url && (
-                <div className="flex items-center gap-3 mb-6 p-3 bg-muted/50 rounded-lg">
-                  <Music className="h-5 w-5 text-primary" />
-                  <span className="text-sm">Background Music</span>
-                  <div className="flex gap-2 ml-auto">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={togglePlay}
-                    >
-                      {isPlaying ? (
-                        <Pause className="h-4 w-4" />
-                      ) : (
-                        <Play className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={toggleMute}
-                    >
-                      {isMuted ? (
-                        <VolumeX className="h-4 w-4" />
-                      ) : (
-                        <Volume2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-6">
-                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    {selectedVision?.dreamer_name}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    {selectedVision &&
-                      new Date(selectedVision.date_received).toLocaleDateString("en-US", {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                  </span>
+          <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden p-0">
+            {selectedVision && (
+              <div className="relative">
+                {/* Background Image */}
+                <div className="absolute inset-0 z-0">
+                  {selectedVision.background_image_url ? (
+                    <img
+                      src={selectedVision.background_image_url}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-primary/30 via-purple-500/30 to-blue-500/30" />
+                  )}
+                  <div className="absolute inset-0 bg-background/85 backdrop-blur-sm" />
                 </div>
 
-                {selectedVision?.scripture_reference && (
-                  <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
-                    <div className="flex items-center gap-2 text-primary font-medium mb-1">
-                      <Book className="h-4 w-4" />
-                      Scripture Reference
+                {/* Content */}
+                <div className="relative z-10 p-6 max-h-[95vh] overflow-y-auto">
+                  <DialogHeader className="mb-6">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="secondary" className="gap-1">
+                            {getCategoryIcon(selectedVision.category)}
+                            {selectedVision.category}
+                          </Badge>
+                          <Badge className={getStatusColor(selectedVision.status)}>
+                            {selectedVision.status.replace("_", " ")}
+                          </Badge>
+                        </div>
+                        <DialogTitle className="text-2xl md:text-3xl">
+                          {selectedVision.title}
+                        </DialogTitle>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => deleteMutation.mutate(selectedVision.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <p className="text-foreground">{selectedVision.scripture_reference}</p>
+                  </DialogHeader>
+
+                  {/* Audio Controls */}
+                  {selectedVision.audio_url && (
+                    <div className="flex items-center gap-3 mb-6 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={togglePlay}
+                        className="hover:bg-primary/20"
+                      >
+                        {isPlaying ? (
+                          <Pause className="h-5 w-5" />
+                        ) : (
+                          <Play className="h-5 w-5" />
+                        )}
+                      </Button>
+                      <div className="flex-1 text-sm text-muted-foreground">
+                        Background Music
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={toggleMute}
+                        className="hover:bg-primary/20"
+                      >
+                        {isMuted ? (
+                          <VolumeX className="h-5 w-5" />
+                        ) : (
+                          <Volume2 className="h-5 w-5" />
+                        )}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Details */}
+                  <div className="space-y-6">
+                    <div className="flex flex-wrap gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-primary" />
+                        <span>{selectedVision.dreamer_name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-primary" />
+                        <span>
+                          {new Date(selectedVision.date_received).toLocaleDateString(
+                            "en-US",
+                            { year: "numeric", month: "long", day: "numeric" }
+                          )}
+                        </span>
+                      </div>
+                      {selectedVision.scripture_reference && (
+                        <div className="flex items-center gap-2">
+                          <Book className="h-4 w-4 text-primary" />
+                          <span>{selectedVision.scripture_reference}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold mb-2 flex items-center gap-2">
+                        <Eye className="h-4 w-4 text-primary" />
+                        Description
+                      </h4>
+                      <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                        {selectedVision.description}
+                      </p>
+                    </div>
+
+                    {selectedVision.reflection_notes && (
+                      <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
+                        <h4 className="font-semibold mb-2 flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-primary" />
+                          Reflection Notes
+                        </h4>
+                        <p className="text-muted-foreground whitespace-pre-wrap">
+                          {selectedVision.reflection_notes}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
-
-                <div>
-                  <h4 className="font-semibold mb-2 flex items-center gap-2">
-                    <Eye className="h-4 w-4" />
-                    The {selectedVision?.category === "vision" ? "Vision" : "Dream"}
-                  </h4>
-                  <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                    {selectedVision?.description}
-                  </p>
-                </div>
-
-                {selectedVision?.reflection_notes && (
-                  <div className="p-4 bg-muted/50 rounded-lg">
-                    <h4 className="font-semibold mb-2 flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      Reflection Notes
-                    </h4>
-                    <p className="text-muted-foreground whitespace-pre-wrap">
-                      {selectedVision.reflection_notes}
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() =>
-                      selectedVision && deleteMutation.mutate(selectedVision.id)
-                    }
-                    disabled={deleteMutation.isPending}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </Button>
                 </div>
               </div>
-            </div>
+            )}
           </DialogContent>
         </Dialog>
       </main>
