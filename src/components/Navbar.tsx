@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, ChevronDown, Bot, Download, Heart } from "lucide-react";
+import { Menu, X, ChevronDown, Bot, Download, Heart, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import ThemeToggle from "@/components/ThemeToggle";
+import UserAvatar from "@/components/UserAvatar";
 import logo from "@/assets/ybf-logo.jpeg";
 
 const Navbar = () => {
@@ -40,15 +41,15 @@ const Navbar = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <nav className='sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b shadow-soft'>
+    <nav className='sticky top-0 z-50 glass border-b'>
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
         <div className='flex justify-between items-center h-16'>
           <Link
             to='/'
             className='flex items-center gap-3 hover:opacity-80 transition-smooth'
           >
-            <img src={logo} alt='YBF Logo' className='h-10 w-auto' />
-            <span className='font-bold text-lg text-primary hidden sm:block'>
+            <img src={logo} alt='YBF Logo' className='h-10 w-auto rounded-lg shadow-soft' />
+            <span className='font-display font-bold text-lg text-primary hidden sm:block'>
               YBFI
             </span>
           </Link>
@@ -164,6 +165,12 @@ const Navbar = () => {
                     Admin News
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to='/admin-users' className='w-full cursor-pointer flex items-center gap-2'>
+                    <Users className="h-4 w-4" />
+                    Manage Users
+                  </Link>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -178,6 +185,7 @@ const Navbar = () => {
             </a>
 
             <ThemeToggle />
+            <UserAvatar />
           </div>
 
           <div className="flex items-center gap-2 lg:hidden">
