@@ -22,6 +22,7 @@ const Navbar = () => {
     { name: "Q&A", path: "/qa" },
     { name: "Books", path: "/books" },
     { name: "Blog", path: "/blog" },
+    { name: "Visions & Dreams", path: "/visions-dreams" },
     { name: "Support", path: "/partner" },
     { name: "Admin Q&A", path: "/admin-qa" },
     { name: "Admin News", path: "/admin-announcements" },
@@ -78,6 +79,11 @@ const Navbar = () => {
                 <DropdownMenuItem asChild>
                   <Link to='/blog' className='w-full cursor-pointer'>
                     Blog
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to='/visions-dreams' className='w-full cursor-pointer'>
+                    Visions & Dreams
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
