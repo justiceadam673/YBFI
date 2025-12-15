@@ -339,6 +339,51 @@ export type Database = {
         }
         Relationships: []
       }
+      visions_dreams: {
+        Row: {
+          audio_url: string | null
+          background_image_url: string | null
+          category: string
+          created_at: string
+          date_received: string
+          description: string
+          dreamer_name: string
+          id: string
+          reflection_notes: string | null
+          scripture_reference: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          audio_url?: string | null
+          background_image_url?: string | null
+          category?: string
+          created_at?: string
+          date_received?: string
+          description: string
+          dreamer_name: string
+          id?: string
+          reflection_notes?: string | null
+          scripture_reference?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          audio_url?: string | null
+          background_image_url?: string | null
+          category?: string
+          created_at?: string
+          date_received?: string
+          description?: string
+          dreamer_name?: string
+          id?: string
+          reflection_notes?: string | null
+          scripture_reference?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
