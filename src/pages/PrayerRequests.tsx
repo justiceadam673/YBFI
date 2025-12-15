@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
@@ -9,9 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Heart, Plus, Send, Users } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { format } from "date-fns";
+import { Heart, Plus, Send, Users, Calendar } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format, isToday, isThisWeek, startOfToday, startOfWeek } from "date-fns";
 
 interface PrayerRequest {
   id: string;
@@ -22,12 +23,15 @@ interface PrayerRequest {
   created_at: string;
 }
 
+type DateFilter = "all" | "today" | "week";
+
 const PrayerRequests = () => {
   const [name, setName] = useState("");
   const [prayer, setPrayer] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [prayedFor, setPrayedFor] = useState<Set<string>>(new Set());
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const queryClient = useQueryClient();
 
   // Load prayed for from localStorage
@@ -50,6 +54,18 @@ const PrayerRequests = () => {
     },
   });
 
+  // Filter requests by date
+  const filteredRequests = useMemo(() => {
+    if (dateFilter === "all") return requests;
+    
+    return requests.filter((request) => {
+      const date = new Date(request.created_at);
+      if (dateFilter === "today") return isToday(date);
+      if (dateFilter === "week") return isThisWeek(date, { weekStartsOn: 0 });
+      return true;
+    });
+  }, [requests, dateFilter]);
+
   // Realtime subscription
   useEffect(() => {
     const channel = supabase
@@ -71,8 +87,8 @@ const PrayerRequests = () => {
   const submitMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("prayer_requests").insert({
-        name: isAnonymous ? "Anonymous" : name,
-        prayer,
+        name: isAnonymous ? "Anonymous" : name.trim(),
+        prayer: prayer.trim(),
         is_anonymous: isAnonymous,
       });
       if (error) throw error;
@@ -85,8 +101,9 @@ const PrayerRequests = () => {
       setDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ["prayer-requests"] });
     },
-    onError: () => {
-      toast.error("Failed to submit prayer request");
+    onError: (error) => {
+      console.error("Submit error:", error);
+      toast.error("Failed to submit prayer request. Please try again.");
     },
   });
 
@@ -141,7 +158,18 @@ const PrayerRequests = () => {
             </p>
           </div>
 
-          <div className="flex justify-center mb-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
+            <Tabs value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilter)}>
+              <TabsList>
+                <TabsTrigger value="all" className="gap-2">
+                  <Calendar className="w-4 h-4" />
+                  All Time
+                </TabsTrigger>
+                <TabsTrigger value="week">This Week</TabsTrigger>
+                <TabsTrigger value="today">Today</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="lg" className="gap-2">
@@ -152,6 +180,9 @@ const PrayerRequests = () => {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Submit a Prayer Request</DialogTitle>
+                  <DialogDescription>
+                    Share your prayer need and let others pray for you.
+                  </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="flex items-center gap-2">
@@ -190,13 +221,17 @@ const PrayerRequests = () => {
             <div className="text-center py-12">
               <p className="text-muted-foreground">Loading prayer requests...</p>
             </div>
-          ) : requests.length === 0 ? (
+          ) : filteredRequests.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">No prayer requests yet. Be the first to share!</p>
+              <p className="text-muted-foreground">
+                {dateFilter === "all"
+                  ? "No prayer requests yet. Be the first to share!"
+                  : `No prayer requests for ${dateFilter === "today" ? "today" : "this week"}.`}
+              </p>
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              {requests.map((request) => (
+              {filteredRequests.map((request) => (
                 <Card key={request.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg flex items-center justify-between">
