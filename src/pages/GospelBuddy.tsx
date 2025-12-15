@@ -28,6 +28,10 @@ import {
   Twitter,
   Facebook,
   MessageCircle,
+  Mic,
+  MicOff,
+  Star,
+  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -35,6 +39,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 type Message = {
   id: string;
@@ -44,7 +55,25 @@ type Message = {
   mode?: string;
 };
 
+type Favorite = {
+  id: string;
+  content: string;
+  mode: string;
+  savedAt: Date;
+  query?: string;
+};
+
 type AIMode = "scriptures" | "confessions" | "questions" | "problems" | "sermons";
+
+// Extend Window interface for SpeechRecognition
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+}
 
 const GospelBuddy = () => {
   const { toast } = useToast();
@@ -53,8 +82,95 @@ const GospelBuddy = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [activeMode, setActiveMode] = useState<AIMode>("scriptures");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [favorites, setFavorites] = useState<Favorite[]>([]);
+  const [showFavorites, setShowFavorites] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<any>(null);
+
+  // Load favorites from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("gospelbuddy-favorites");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setFavorites(parsed.map((f: any) => ({ ...f, savedAt: new Date(f.savedAt) })));
+      } catch (e) {
+        console.error("Error loading favorites:", e);
+      }
+    }
+  }, []);
+
+  // Save favorites to localStorage
+  useEffect(() => {
+    if (favorites.length > 0) {
+      localStorage.setItem("gospelbuddy-favorites", JSON.stringify(favorites));
+    }
+  }, [favorites]);
+
+  // Initialize Speech Recognition
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = "en-US";
+
+      recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0].transcript)
+          .join("");
+        setInput(transcript);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.error("Speech recognition error:", event.error);
+        setIsListening(false);
+        if (event.error === "not-allowed") {
+          toast({
+            title: "Microphone access denied",
+            description: "Please allow microphone access to use voice input.",
+            variant: "destructive",
+          });
+        }
+      };
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, [toast]);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      toast({
+        title: "Voice input not supported",
+        description: "Your browser doesn't support voice input. Try Chrome or Edge.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current.start();
+      setIsListening(true);
+      toast({
+        title: "Listening...",
+        description: "Speak now. Click the mic again to stop.",
+      });
+    }
+  };
 
   const modes = [
     {
@@ -113,6 +229,12 @@ const GospelBuddy = () => {
     e?.preventDefault();
     if (!input.trim() || isLoading) return;
 
+    // Stop listening if active
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+
     const userMessage: Message = {
       id: generateId(),
       role: "user",
@@ -122,13 +244,14 @@ const GospelBuddy = () => {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const currentInput = input;
     setInput("");
     setIsLoading(true);
 
     try {
       const { data, error } = await supabase.functions.invoke("gospel-buddy", {
         body: {
-          message: input,
+          message: currentInput,
           mode: activeMode,
           history: messages.slice(-10).map((m) => ({
             role: m.role,
@@ -183,6 +306,38 @@ const GospelBuddy = () => {
       e.preventDefault();
       handleSubmit();
     }
+  };
+
+  const addToFavorites = (message: Message, query?: string) => {
+    const newFavorite: Favorite = {
+      id: generateId(),
+      content: message.content,
+      mode: message.mode || activeMode,
+      savedAt: new Date(),
+      query,
+    };
+    setFavorites((prev) => [newFavorite, ...prev]);
+    toast({
+      title: "Saved to favorites!",
+      description: "You can access it from the star icon.",
+    });
+  };
+
+  const removeFromFavorites = (id: string) => {
+    setFavorites((prev) => {
+      const updated = prev.filter((f) => f.id !== id);
+      if (updated.length === 0) {
+        localStorage.removeItem("gospelbuddy-favorites");
+      }
+      return updated;
+    });
+    toast({
+      title: "Removed from favorites",
+    });
+  };
+
+  const isFavorited = (content: string) => {
+    return favorites.some((f) => f.content === content);
   };
 
   const shareToWhatsApp = (text: string) => {
@@ -258,6 +413,11 @@ const GospelBuddy = () => {
     ],
   };
 
+  const getModeLabel = (modeId: string) => {
+    const mode = modes.find((m) => m.id === modeId);
+    return mode?.label || modeId;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex flex-col">
       <Navbar />
@@ -273,6 +433,84 @@ const GospelBuddy = () => {
             <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary via-purple-500 to-blue-500 bg-clip-text text-transparent">
               GospelBuddy.AI
             </h1>
+            {/* Favorites Button */}
+            <Sheet open={showFavorites} onOpenChange={setShowFavorites}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="relative">
+                  <Star className="h-5 w-5" />
+                  {favorites.length > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] text-primary-foreground flex items-center justify-center">
+                      {favorites.length}
+                    </span>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-full sm:max-w-lg">
+                <SheetHeader>
+                  <SheetTitle className="flex items-center gap-2">
+                    <Star className="h-5 w-5 text-yellow-500" />
+                    Saved Favorites ({favorites.length})
+                  </SheetTitle>
+                </SheetHeader>
+                <ScrollArea className="h-[calc(100vh-120px)] mt-4">
+                  {favorites.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Star className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                      <p>No favorites yet</p>
+                      <p className="text-sm">Save responses you like for later!</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 pr-4">
+                      {favorites.map((fav) => (
+                        <Card key={fav.id} className="p-4">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                              {getModeLabel(fav.mode)}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                              onClick={() => removeFromFavorites(fav.id)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          {fav.query && (
+                            <p className="text-xs text-muted-foreground mb-2 italic">
+                              Q: {fav.query}
+                            </p>
+                          )}
+                          <div className="text-sm max-h-40 overflow-y-auto">
+                            <MarkdownRenderer content={fav.content.substring(0, 500) + (fav.content.length > 500 ? "..." : "")} />
+                          </div>
+                          <div className="flex items-center gap-2 mt-3 pt-2 border-t">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => copyToClipboard(fav.content, fav.id)}
+                            >
+                              <Copy className="h-3 w-3 mr-1" />
+                              Copy
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => shareToWhatsApp(fav.content)}
+                            >
+                              <MessageCircle className="h-3 w-3 mr-1" />
+                              Share
+                            </Button>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </SheetContent>
+            </Sheet>
           </div>
           <p className="text-muted-foreground text-sm md:text-base max-w-xl mx-auto">
             Your AI companion for scripture, confessions, answers, and spiritual growth
@@ -339,7 +577,7 @@ const GospelBuddy = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {messages.map((message) => (
+                {messages.map((message, index) => (
                   <div
                     key={message.id}
                     className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
@@ -364,7 +602,7 @@ const GospelBuddy = () => {
                         </div>
                       )}
                       {message.role === "assistant" && (
-                        <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/50">
+                        <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/50 flex-wrap">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -377,6 +615,23 @@ const GospelBuddy = () => {
                               <Copy className="h-3 w-3 mr-1" />
                             )}
                             Copy
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`h-7 px-2 text-xs ${isFavorited(message.content) ? "text-yellow-500" : ""}`}
+                            onClick={() => {
+                              if (isFavorited(message.content)) {
+                                const fav = favorites.find((f) => f.content === message.content);
+                                if (fav) removeFromFavorites(fav.id);
+                              } else {
+                                const prevMessage = messages[index - 1];
+                                addToFavorites(message, prevMessage?.role === "user" ? prevMessage.content : undefined);
+                              }
+                            }}
+                          >
+                            <Star className={`h-3 w-3 mr-1 ${isFavorited(message.content) ? "fill-current" : ""}`} />
+                            {isFavorited(message.content) ? "Saved" : "Save"}
                           </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -450,14 +705,28 @@ const GospelBuddy = () => {
         {/* Input Area */}
         <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm py-2">
           <form onSubmit={handleSubmit} className="flex gap-2">
+            <Button
+              type="button"
+              variant={isListening ? "default" : "outline"}
+              size="icon"
+              className={`h-[50px] w-[50px] shrink-0 ${isListening ? "bg-red-500 hover:bg-red-600 animate-pulse" : ""}`}
+              onClick={toggleListening}
+              disabled={isLoading}
+            >
+              {isListening ? (
+                <MicOff className="h-5 w-5" />
+              ) : (
+                <Mic className="h-5 w-5" />
+              )}
+            </Button>
             <div className="flex-1 relative">
               <Textarea
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={currentMode.placeholder}
-                className="min-h-[50px] max-h-[150px] resize-none pr-12"
+                placeholder={isListening ? "Listening... speak now" : currentMode.placeholder}
+                className="min-h-[50px] max-h-[150px] resize-none pr-4"
                 rows={1}
               />
             </div>
@@ -474,6 +743,11 @@ const GospelBuddy = () => {
               )}
             </Button>
           </form>
+          {isListening && (
+            <p className="text-xs text-center text-muted-foreground mt-2 animate-pulse">
+              🎤 Listening... Click the mic to stop
+            </p>
+          )}
         </div>
       </main>
 
