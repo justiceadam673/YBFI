@@ -17,6 +17,7 @@ import VisionsDreams from "./pages/VisionsDreams";
 import GospelBuddy from "./pages/GospelBuddy";
 import InstallApp from "./pages/InstallApp";
 import NotFound from "./pages/NotFound";
+import InstallPrompt from "./components/InstallPrompt";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <InstallPrompt />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

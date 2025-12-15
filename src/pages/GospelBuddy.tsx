@@ -5,27 +5,23 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
 import {
   Send,
   Loader2,
   BookOpen,
   Heart,
-  MessageCircle,
   Lightbulb,
-  Mic,
   Sparkles,
   Copy,
   Check,
   Trash2,
   Bot,
   User,
-  RefreshCw,
   BookMarked,
-  HandHeart,
   HelpCircle,
   Church,
 } from "lucide-react";
@@ -79,8 +75,8 @@ const GospelBuddy = () => {
       id: "problems" as AIMode,
       label: "Problems",
       icon: Lightbulb,
-      description: "Biblical solutions to life's challenges",
-      placeholder: "Share what you're going through and get biblical guidance...",
+      description: "Biblical solutions to life challenges",
+      placeholder: "Share what you are going through and get biblical guidance...",
       color: "from-amber-500 to-orange-500",
     },
     {
@@ -199,10 +195,10 @@ const GospelBuddy = () => {
       "What is the purpose of my life?",
     ],
     problems: [
-      "I'm struggling with fear and worry",
+      "I am struggling with fear and worry",
       "I feel distant from God",
-      "I'm facing financial difficulties",
-      "I'm dealing with unforgiveness",
+      "I am facing financial difficulties",
+      "I am dealing with unforgiveness",
     ],
     sermons: [
       "Help me prepare a sermon on grace",
@@ -310,15 +306,19 @@ const GospelBuddy = () => {
                           : "bg-muted rounded-bl-sm"
                       }`}
                     >
-                      <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                        {message.content}
-                      </div>
+                      {message.role === "assistant" ? (
+                        <MarkdownRenderer content={message.content} />
+                      ) : (
+                        <div className="text-sm leading-relaxed">
+                          {message.content}
+                        </div>
+                      )}
                       {message.role === "assistant" && (
-                        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
+                        <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/50">
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 px-2 text-xs"
+                            className="h-7 px-2 text-xs"
                             onClick={() => copyToClipboard(message.content, message.id)}
                           >
                             {copiedId === message.id ? (
@@ -346,7 +346,7 @@ const GospelBuddy = () => {
                     <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3">
                       <div className="flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm text-muted-foreground">Thinking...</span>
+                        <span className="text-sm text-muted-foreground">Searching the scriptures...</span>
                       </div>
                     </div>
                   </div>
