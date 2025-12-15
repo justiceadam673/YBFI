@@ -132,10 +132,7 @@ const Navbar = () => {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link
-                    to='/admin-announcements'
-                    className='w-full cursor-pointer'
-                  >
+                  <Link to='/admin-announcements' className='w-full cursor-pointer'>
                     Admin News
                   </Link>
                 </DropdownMenuItem>
