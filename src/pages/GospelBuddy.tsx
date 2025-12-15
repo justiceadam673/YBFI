@@ -24,7 +24,17 @@ import {
   BookMarked,
   HelpCircle,
   Church,
+  Share2,
+  Twitter,
+  Facebook,
+  MessageCircle,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type Message = {
   id: string;
@@ -172,6 +182,46 @@ const GospelBuddy = () => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
+    }
+  };
+
+  const shareToWhatsApp = (text: string) => {
+    const shareText = `✝️ From GospelBuddy.AI - YBFI\n\n${text}\n\n🔗 Visit: ${window.location.origin}/gospel-buddy`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, "_blank");
+  };
+
+  const shareToTwitter = (text: string) => {
+    const shareText = `${text.substring(0, 200)}...\n\n✝️ via GospelBuddy.AI - YBFI`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(window.location.origin + "/gospel-buddy")}`, "_blank");
+  };
+
+  const shareToFacebook = () => {
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.origin + "/gospel-buddy")}`, "_blank");
+  };
+
+  const shareNative = async (text: string) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "GospelBuddy.AI - YBFI",
+          text: text.substring(0, 500),
+          url: window.location.origin + "/gospel-buddy",
+        });
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          toast({
+            title: "Share failed",
+            description: "Unable to share. Try copying instead.",
+            variant: "destructive",
+          });
+        }
+      }
+    } else {
+      copyToClipboard(text, "share");
+      toast({
+        title: "Copied!",
+        description: "Text copied. You can now paste it anywhere.",
+      });
     }
   };
 
@@ -328,6 +378,32 @@ const GospelBuddy = () => {
                             )}
                             Copy
                           </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                                <Share2 className="h-3 w-3 mr-1" />
+                                Share
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              <DropdownMenuItem onClick={() => shareToWhatsApp(message.content)}>
+                                <MessageCircle className="h-4 w-4 mr-2 text-green-500" />
+                                WhatsApp
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => shareToTwitter(message.content)}>
+                                <Twitter className="h-4 w-4 mr-2 text-blue-400" />
+                                Twitter/X
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => shareToFacebook()}>
+                                <Facebook className="h-4 w-4 mr-2 text-blue-600" />
+                                Facebook
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => shareNative(message.content)}>
+                                <Share2 className="h-4 w-4 mr-2" />
+                                More options
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       )}
                     </div>
