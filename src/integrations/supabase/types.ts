@@ -285,6 +285,33 @@ export type Database = {
         }
         Relationships: []
       }
+      prayer_requests: {
+        Row: {
+          created_at: string
+          id: string
+          is_anonymous: boolean
+          name: string
+          prayer: string
+          prayer_count: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_anonymous?: boolean
+          name: string
+          prayer: string
+          prayer_count?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_anonymous?: boolean
+          name?: string
+          prayer?: string
+          prayer_count?: number
+        }
+        Relationships: []
+      }
       questions: {
         Row: {
           answer: string | null

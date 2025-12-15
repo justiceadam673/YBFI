@@ -16,6 +16,7 @@ import AdminAnnouncements from "./pages/AdminAnnouncements";
 import VisionsDreams from "./pages/VisionsDreams";
 import GospelBuddy from "./pages/GospelBuddy";
 import InstallApp from "./pages/InstallApp";
+import PrayerRequests from "./pages/PrayerRequests";
 import NotFound from "./pages/NotFound";
 import InstallPrompt from "./components/InstallPrompt";
 
@@ -38,6 +39,7 @@ const App = () => (
           <Route path="/books" element={<Books />} />
           <Route path="/visions-dreams" element={<VisionsDreams />} />
           <Route path="/gospel-buddy" element={<GospelBuddy />} />
+          <Route path="/prayer-requests" element={<PrayerRequests />} />
           <Route path="/install" element={<InstallApp />} />
           <Route path="/admin-qa" element={<AdminQA />} />
           <Route path="/admin-announcements" element={<AdminAnnouncements />} />

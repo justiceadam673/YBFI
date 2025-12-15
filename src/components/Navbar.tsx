@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, ChevronDown, Bot, Download } from "lucide-react";
+import { Menu, X, ChevronDown, Bot, Download, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -24,6 +24,7 @@ const Navbar = () => {
     { name: "Books", path: "/books" },
     { name: "Blog", path: "/blog" },
     { name: "Visions & Dreams", path: "/visions-dreams" },
+    { name: "Prayer Requests", path: "/prayer-requests" },
     { name: "GospelBuddy.AI", path: "/gospel-buddy" },
     { name: "Install App", path: "/install" },
     { name: "Support", path: "/partner" },
@@ -87,6 +88,12 @@ const Navbar = () => {
                 <DropdownMenuItem asChild>
                   <Link to='/visions-dreams' className='w-full cursor-pointer'>
                     Visions & Dreams
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to='/prayer-requests' className='w-full cursor-pointer flex items-center gap-2'>
+                    <Heart className="h-4 w-4 text-red-500" />
+                    Prayer Requests
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -217,6 +224,7 @@ const Navbar = () => {
                   >
                     {link.name === "GospelBuddy.AI" && <Bot className="h-4 w-4 mr-2 text-primary" />}
                     {link.name === "Install App" && <Download className="h-4 w-4 mr-2 text-green-500" />}
+                    {link.name === "Prayer Requests" && <Heart className="h-4 w-4 mr-2 text-red-500" />}
                     {link.name}
                   </Button>
                 </Link>
