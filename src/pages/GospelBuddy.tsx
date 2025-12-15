@@ -32,6 +32,10 @@ import {
   MicOff,
   Star,
   X,
+  Volume2,
+  VolumeX,
+  History,
+  Plus,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -55,6 +59,14 @@ type Message = {
   mode?: string;
 };
 
+type Conversation = {
+  id: string;
+  title: string;
+  messages: Message[];
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 type Favorite = {
   id: string;
   content: string;
@@ -65,7 +77,6 @@ type Favorite = {
 
 type AIMode = "scriptures" | "confessions" | "questions" | "problems" | "sermons";
 
-// Extend Window interface for SpeechRecognition
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
   resultIndex: number;
@@ -78,16 +89,71 @@ interface SpeechRecognitionErrorEvent extends Event {
 const GospelBuddy = () => {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [activeMode, setActiveMode] = useState<AIMode>("scriptures");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
+
+  // Load conversations from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("gospelbuddy-conversations");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const loadedConversations = parsed.map((c: any) => ({
+          ...c,
+          createdAt: new Date(c.createdAt),
+          updatedAt: new Date(c.updatedAt),
+          messages: c.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })),
+        }));
+        setConversations(loadedConversations);
+        
+        // Load the most recent conversation
+        if (loadedConversations.length > 0) {
+          const mostRecent = loadedConversations[0];
+          setCurrentConversationId(mostRecent.id);
+          setMessages(mostRecent.messages);
+        }
+      } catch (e) {
+        console.error("Error loading conversations:", e);
+      }
+    }
+  }, []);
+
+  // Save conversations to localStorage
+  useEffect(() => {
+    if (conversations.length > 0) {
+      localStorage.setItem("gospelbuddy-conversations", JSON.stringify(conversations));
+    }
+  }, [conversations]);
+
+  // Update current conversation when messages change
+  useEffect(() => {
+    if (currentConversationId && messages.length > 0) {
+      setConversations((prev) => {
+        const existing = prev.find((c) => c.id === currentConversationId);
+        if (existing) {
+          return prev.map((c) =>
+            c.id === currentConversationId
+              ? { ...c, messages, updatedAt: new Date(), title: generateTitle(messages) }
+              : c
+          ).sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+        }
+        return prev;
+      });
+    }
+  }, [messages, currentConversationId]);
 
   // Load favorites from localStorage
   useEffect(() => {
@@ -146,8 +212,55 @@ const GospelBuddy = () => {
       if (recognitionRef.current) {
         recognitionRef.current.abort();
       }
+      window.speechSynthesis?.cancel();
     };
   }, [toast]);
+
+  const generateTitle = (msgs: Message[]) => {
+    const firstUserMsg = msgs.find((m) => m.role === "user");
+    if (firstUserMsg) {
+      return firstUserMsg.content.substring(0, 40) + (firstUserMsg.content.length > 40 ? "..." : "");
+    }
+    return "New conversation";
+  };
+
+  const generateId = () => Math.random().toString(36).substring(7);
+
+  const startNewConversation = () => {
+    const newConversation: Conversation = {
+      id: generateId(),
+      title: "New conversation",
+      messages: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    setConversations((prev) => [newConversation, ...prev]);
+    setCurrentConversationId(newConversation.id);
+    setMessages([]);
+    setShowHistory(false);
+    toast({ title: "New conversation started" });
+  };
+
+  const loadConversation = (conversation: Conversation) => {
+    setCurrentConversationId(conversation.id);
+    setMessages(conversation.messages);
+    setShowHistory(false);
+  };
+
+  const deleteConversation = (id: string) => {
+    setConversations((prev) => {
+      const updated = prev.filter((c) => c.id !== id);
+      if (updated.length === 0) {
+        localStorage.removeItem("gospelbuddy-conversations");
+      }
+      return updated;
+    });
+    if (currentConversationId === id) {
+      setCurrentConversationId(null);
+      setMessages([]);
+    }
+    toast({ title: "Conversation deleted" });
+  };
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
@@ -170,6 +283,69 @@ const GospelBuddy = () => {
         description: "Speak now. Click the mic again to stop.",
       });
     }
+  };
+
+  // Text-to-Speech functions
+  const speakText = (text: string, messageId: string) => {
+    if (!window.speechSynthesis) {
+      toast({
+        title: "Text-to-speech not supported",
+        description: "Your browser doesn't support text-to-speech.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Stop any current speech
+    window.speechSynthesis.cancel();
+
+    // Clean text for speech (remove markdown)
+    const cleanText = text
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/\*(.*?)\*/g, "$1")
+      .replace(/#{1,6}\s/g, "")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/>\s/g, "")
+      .replace(/-\s/g, "")
+      .replace(/\n+/g, ". ");
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    // Try to use a good voice
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(
+      (v) => v.lang.startsWith("en") && (v.name.includes("Google") || v.name.includes("Microsoft"))
+    ) || voices.find((v) => v.lang.startsWith("en"));
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      setSpeakingMessageId(messageId);
+    };
+
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      setSpeakingMessageId(null);
+    };
+
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      setSpeakingMessageId(null);
+    };
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    window.speechSynthesis?.cancel();
+    setIsSpeaking(false);
+    setSpeakingMessageId(null);
   };
 
   const modes = [
@@ -223,8 +399,6 @@ const GospelBuddy = () => {
     }
   }, [messages]);
 
-  const generateId = () => Math.random().toString(36).substring(7);
-
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!input.trim() || isLoading) return;
@@ -233,6 +407,19 @@ const GospelBuddy = () => {
     if (isListening && recognitionRef.current) {
       recognitionRef.current.stop();
       setIsListening(false);
+    }
+
+    // Create new conversation if none exists
+    if (!currentConversationId) {
+      const newConversation: Conversation = {
+        id: generateId(),
+        title: "New conversation",
+        messages: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      setConversations((prev) => [newConversation, ...prev]);
+      setCurrentConversationId(newConversation.id);
     }
 
     const userMessage: Message = {
@@ -295,6 +482,13 @@ const GospelBuddy = () => {
 
   const clearChat = () => {
     setMessages([]);
+    if (currentConversationId) {
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === currentConversationId ? { ...c, messages: [], updatedAt: new Date() } : c
+        )
+      );
+    }
     toast({
       title: "Chat cleared",
       description: "All messages have been removed",
@@ -418,6 +612,17 @@ const GospelBuddy = () => {
     return mode?.label || modeId;
   };
 
+  const formatDate = (date: Date) => {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    
+    if (days === 0) return "Today";
+    if (days === 1) return "Yesterday";
+    if (days < 7) return `${days} days ago`;
+    return date.toLocaleDateString();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex flex-col">
       <Navbar />
@@ -433,6 +638,76 @@ const GospelBuddy = () => {
             <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary via-purple-500 to-blue-500 bg-clip-text text-transparent">
               GospelBuddy.AI
             </h1>
+            
+            {/* History Button */}
+            <Sheet open={showHistory} onOpenChange={setShowHistory}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="relative">
+                  <History className="h-5 w-5" />
+                  {conversations.length > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] text-primary-foreground flex items-center justify-center">
+                      {conversations.length}
+                    </span>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-full sm:max-w-lg">
+                <SheetHeader>
+                  <SheetTitle className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <History className="h-5 w-5" />
+                      Conversation History
+                    </span>
+                    <Button size="sm" onClick={startNewConversation}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      New
+                    </Button>
+                  </SheetTitle>
+                </SheetHeader>
+                <ScrollArea className="h-[calc(100vh-120px)] mt-4">
+                  {conversations.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <History className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                      <p>No conversation history</p>
+                      <p className="text-sm">Your conversations will appear here</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 pr-4">
+                      {conversations.map((conv) => (
+                        <Card
+                          key={conv.id}
+                          className={`p-3 cursor-pointer hover:bg-muted/50 transition-colors ${
+                            currentConversationId === conv.id ? "border-primary" : ""
+                          }`}
+                          onClick={() => loadConversation(conv)}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{conv.title}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatDate(conv.updatedAt)} • {conv.messages.length} messages
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteConversation(conv.id);
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </SheetContent>
+            </Sheet>
+
             {/* Favorites Button */}
             <Sheet open={showFavorites} onOpenChange={setShowFavorites}>
               <SheetTrigger asChild>
@@ -493,6 +768,15 @@ const GospelBuddy = () => {
                             >
                               <Copy className="h-3 w-3 mr-1" />
                               Copy
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => speakText(fav.content, fav.id)}
+                            >
+                              <Volume2 className="h-3 w-3 mr-1" />
+                              Listen
                             </Button>
                             <Button
                               variant="ghost"
@@ -619,6 +903,25 @@ const GospelBuddy = () => {
                           <Button
                             variant="ghost"
                             size="sm"
+                            className={`h-7 px-2 text-xs ${speakingMessageId === message.id ? "text-primary" : ""}`}
+                            onClick={() => {
+                              if (speakingMessageId === message.id) {
+                                stopSpeaking();
+                              } else {
+                                speakText(message.content, message.id);
+                              }
+                            }}
+                          >
+                            {speakingMessageId === message.id ? (
+                              <VolumeX className="h-3 w-3 mr-1" />
+                            ) : (
+                              <Volume2 className="h-3 w-3 mr-1" />
+                            )}
+                            {speakingMessageId === message.id ? "Stop" : "Listen"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             className={`h-7 px-2 text-xs ${isFavorited(message.content) ? "text-yellow-500" : ""}`}
                             onClick={() => {
                               if (isFavorited(message.content)) {
@@ -688,15 +991,24 @@ const GospelBuddy = () => {
 
           {/* Clear Chat Button */}
           {messages.length > 0 && (
-            <div className="px-4 pb-2">
+            <div className="px-4 pb-2 flex gap-2">
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full text-muted-foreground hover:text-destructive"
+                className="flex-1 text-muted-foreground hover:text-destructive"
                 onClick={clearChat}
               >
                 <Trash2 className="h-3 w-3 mr-2" />
                 Clear Chat
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                onClick={startNewConversation}
+              >
+                <Plus className="h-3 w-3 mr-2" />
+                New Chat
               </Button>
             </div>
           )}
@@ -746,6 +1058,11 @@ const GospelBuddy = () => {
           {isListening && (
             <p className="text-xs text-center text-muted-foreground mt-2 animate-pulse">
               🎤 Listening... Click the mic to stop
+            </p>
+          )}
+          {isSpeaking && (
+            <p className="text-xs text-center text-primary mt-2 animate-pulse">
+              🔊 Speaking... Click "Stop" to cancel
             </p>
           )}
         </div>
