@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, ChevronDown, Bot } from "lucide-react";
+import { Menu, X, ChevronDown, Bot, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import ThemeToggle from "@/components/ThemeToggle";
 import logo from "@/assets/ybf-logo.jpeg";
 
 const Navbar = () => {
@@ -94,6 +95,12 @@ const Navbar = () => {
                     GospelBuddy.AI
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to='/install' className='w-full cursor-pointer flex items-center gap-2'>
+                    <Download className="h-4 w-4 text-green-500" />
+                    Install App
+                  </Link>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -162,15 +169,20 @@ const Navbar = () => {
                 WhatsApp
               </Button>
             </a>
+
+            <ThemeToggle />
           </div>
 
-          <button
-            className='lg:hidden p-2 rounded-lg hover:bg-muted transition-smooth'
-            onClick={() => setIsOpen(!isOpen)}
-            aria-label='Toggle menu'
-          >
-            {isOpen ? <X className='h-6 w-6' /> : <Menu className='h-6 w-6' />}
-          </button>
+          <div className="flex items-center gap-2 lg:hidden">
+            <ThemeToggle />
+            <button
+              className='p-2 rounded-lg hover:bg-muted transition-smooth'
+              onClick={() => setIsOpen(!isOpen)}
+              aria-label='Toggle menu'
+            >
+              {isOpen ? <X className='h-6 w-6' /> : <Menu className='h-6 w-6' />}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -204,6 +216,7 @@ const Navbar = () => {
                     className='w-full justify-start transition-smooth'
                   >
                     {link.name === "GospelBuddy.AI" && <Bot className="h-4 w-4 mr-2 text-primary" />}
+                    {link.name === "Install App" && <Download className="h-4 w-4 mr-2 text-green-500" />}
                     {link.name}
                   </Button>
                 </Link>
