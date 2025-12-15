@@ -15,6 +15,7 @@ import AdminQA from "./pages/AdminQA";
 import AdminAnnouncements from "./pages/AdminAnnouncements";
 import VisionsDreams from "./pages/VisionsDreams";
 import GospelBuddy from "./pages/GospelBuddy";
+import InstallApp from "./pages/InstallApp";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/books" element={<Books />} />
           <Route path="/visions-dreams" element={<VisionsDreams />} />
           <Route path="/gospel-buddy" element={<GospelBuddy />} />
+          <Route path="/install" element={<InstallApp />} />
           <Route path="/admin-qa" element={<AdminQA />} />
           <Route path="/admin-announcements" element={<AdminAnnouncements />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

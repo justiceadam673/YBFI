@@ -24,6 +24,7 @@ const Navbar = () => {
     { name: "Blog", path: "/blog" },
     { name: "Visions & Dreams", path: "/visions-dreams" },
     { name: "GospelBuddy.AI", path: "/gospel-buddy" },
+    { name: "Install App", path: "/install" },
     { name: "Support", path: "/partner" },
     { name: "Admin Q&A", path: "/admin-qa" },
     { name: "Admin News", path: "/admin-announcements" },
