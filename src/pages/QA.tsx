@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { HelpCircle, Send } from "lucide-react";
+import { useState } from "react";
+import { HelpCircle, Send, Sparkles, MessageCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,6 +42,7 @@ const QA = () => {
   const [question, setQuestion] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +54,7 @@ const QA = () => {
       return;
     }
 
-    // Save to database
+    setIsSubmitting(true);
     const { error } = await supabase
       .from('questions')
       .insert([
@@ -63,6 +64,8 @@ const QA = () => {
           question: question.trim(),
         }
       ]);
+
+    setIsSubmitting(false);
 
     if (error) {
       toast({
@@ -83,74 +86,108 @@ const QA = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       
-      <main className="flex-1 py-12">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12 animate-fade-in">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Questions & Answers</h1>
-            <div className="w-24 h-1 bg-accent mx-auto mb-6"></div>
-            <p className="text-lg text-muted-foreground">
-              Find answers to common questions about Young Builders Foundation
-            </p>
+      <main className="flex-1">
+        {/* Hero Section */}
+        <section className="relative py-20 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/10" />
+          <div className="absolute top-20 right-20 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-float" />
+          <div className="absolute bottom-10 left-20 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }} />
+          
+          <div className="container mx-auto px-4 relative z-10">
+            <div className="text-center max-w-3xl mx-auto">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 animate-fade-in">
+                <Sparkles className="w-4 h-4" />
+                Get Answers
+              </div>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 animate-fade-in">
+                Questions & <span className="text-gradient">Answers</span>
+              </h1>
+              <p className="text-lg md:text-xl text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                Find answers to common questions about Young Builders Foundation
+              </p>
+            </div>
           </div>
+        </section>
 
-          <div className="mb-12">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <HelpCircle className="w-6 h-6 text-primary" />
-              Frequently Asked Questions
-            </h2>
-            <Accordion type="single" collapsible className="space-y-4">
-              {faqs.map((faq, index) => (
-                <AccordionItem key={index} value={`item-${index}`} className="border rounded-lg px-6 shadow-soft">
-                  <AccordionTrigger className="text-left font-semibold hover:text-primary transition-smooth">
-                    {faq.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground leading-relaxed">
-                    {faq.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </div>
+        {/* Content */}
+        <section className="py-12 container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            {/* FAQs */}
+            <div className="mb-16">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <HelpCircle className="w-6 h-6 text-primary" />
+                </div>
+                <h2 className="text-2xl md:text-3xl font-bold">Frequently Asked Questions</h2>
+              </div>
+              
+              <Accordion type="single" collapsible className="space-y-4">
+                {faqs.map((faq, index) => (
+                  <AccordionItem 
+                    key={index} 
+                    value={`item-${index}`} 
+                    className="glass-card border-border/50 rounded-xl px-6 overflow-hidden animate-fade-in"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <AccordionTrigger className="text-left font-semibold hover:text-primary transition-colors py-5">
+                      {faq.question}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-muted-foreground leading-relaxed pb-5">
+                      {faq.answer}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </div>
 
-          <Card className="shadow-soft">
-            <CardContent className="pt-6">
-              <h2 className="text-2xl font-bold mb-6">Submit Your Question</h2>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Input
-                    placeholder="Your Name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
+            {/* Submit Question */}
+            <Card className="glass-card border-border/50 overflow-hidden">
+              <CardContent className="pt-8 pb-8 px-6 md:px-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+                    <MessageCircle className="w-6 h-6 text-accent" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold">Submit Your Question</h2>
+                    <p className="text-muted-foreground text-sm">Can't find your answer? Ask us directly!</p>
+                  </div>
                 </div>
-                <div>
-                  <Input
-                    type="email"
-                    placeholder="Your Email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-                <div>
+                
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      placeholder="Your Name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="border-border/50 focus:border-primary"
+                    />
+                    <Input
+                      type="email"
+                      placeholder="Your Email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="border-border/50 focus:border-primary"
+                    />
+                  </div>
                   <Textarea
                     placeholder="Your Question"
                     rows={4}
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
+                    className="border-border/50 focus:border-primary"
                   />
-                </div>
-                <Button type="submit" className="w-full">
-                  <Send className="w-4 h-4 mr-2" />
-                  Submit Question
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-        </div>
+                  <Button type="submit" className="w-full gap-2 shadow-elegant hover:shadow-gold transition-all" disabled={isSubmitting}>
+                    <Send className="w-4 h-4" />
+                    {isSubmitting ? "Submitting..." : "Submit Question"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
       </main>
 
       <Footer />

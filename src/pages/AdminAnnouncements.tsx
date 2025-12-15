@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Megaphone, Lock, Trash2 } from "lucide-react";
+import { Megaphone, Lock, Trash2, Sparkles, Plus } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
 
 interface Announcement {
   id: string;
@@ -31,11 +32,7 @@ const AdminAnnouncements = () => {
         .channel('announcements-changes')
         .on(
           'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'announcements'
-          },
+          { event: '*', schema: 'public', table: 'announcements' },
           () => {
             fetchAnnouncements();
           }
@@ -107,17 +104,17 @@ const AdminAnnouncements = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-background">
         <Navbar />
-        <main className="flex-1 flex items-center justify-center py-12">
-          <Card className="w-full max-w-md shadow-soft">
-            <CardContent className="pt-6">
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Lock className="w-8 h-8 text-primary" />
+        <main className="flex-1 flex items-center justify-center py-12 px-4">
+          <Card className="w-full max-w-md glass-card border-border/50 shadow-elegant animate-fade-in">
+            <CardContent className="pt-8 pb-8">
+              <div className="text-center mb-8">
+                <div className="w-20 h-20 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-gold">
+                  <Lock className="w-10 h-10 text-primary-foreground" />
                 </div>
-                <h2 className="text-2xl font-bold">Admin Access Required</h2>
-                <p className="text-muted-foreground mt-2">
+                <h2 className="text-2xl font-bold mb-2">Admin Access Required</h2>
+                <p className="text-muted-foreground">
                   Enter password to manage announcements
                 </p>
               </div>
@@ -128,8 +125,9 @@ const AdminAnnouncements = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && verifyPassword()}
+                  className="border-border/50 focus:border-primary"
                 />
-                <Button onClick={verifyPassword} className="w-full">
+                <Button onClick={verifyPassword} className="w-full shadow-elegant hover:shadow-gold transition-all">
                   Verify Password
                 </Button>
               </div>
@@ -142,79 +140,105 @@ const AdminAnnouncements = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       
-      <main className="flex-1 py-12">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12 animate-fade-in">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Manage Announcements</h1>
-            <div className="w-24 h-1 bg-accent mx-auto mb-6"></div>
-            <p className="text-lg text-muted-foreground">
-              Create and manage announcements that will appear on the home page
-            </p>
+      <main className="flex-1">
+        {/* Hero Section */}
+        <section className="relative py-16 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/10" />
+          <div className="absolute top-10 right-20 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-float" />
+          
+          <div className="container mx-auto px-4 relative z-10">
+            <div className="text-center max-w-3xl mx-auto">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 animate-fade-in">
+                <Sparkles className="w-4 h-4" />
+                Admin Panel
+              </div>
+              <h1 className="text-4xl md:text-5xl font-bold mb-4 animate-fade-in">
+                Manage <span className="text-gradient">Announcements</span>
+              </h1>
+              <p className="text-lg text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                Create and manage announcements that will appear on the home page
+              </p>
+            </div>
           </div>
+        </section>
 
-          <Card className="shadow-soft mb-12">
-            <CardContent className="pt-6">
-              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                <Megaphone className="w-6 h-6 text-primary" />
-                Create New Announcement
-              </h2>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
+        {/* Content */}
+        <section className="py-12 container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            {/* Create Form */}
+            <Card className="glass-card border-border/50 shadow-elegant mb-12 overflow-hidden">
+              <CardContent className="pt-8 pb-8 px-6 md:px-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Plus className="w-6 h-6 text-primary" />
+                  </div>
+                  <h2 className="text-2xl font-bold">Create New Announcement</h2>
+                </div>
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <Input
                     placeholder="Announcement Title"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
+                    className="border-border/50 focus:border-primary"
                   />
-                </div>
-                <div>
                   <Textarea
                     placeholder="Announcement Content"
                     rows={4}
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
+                    className="border-border/50 focus:border-primary"
                   />
-                </div>
-                <Button type="submit" className="w-full">
-                  <Megaphone className="w-4 h-4 mr-2" />
-                  Publish Announcement
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                  <Button type="submit" className="w-full gap-2 shadow-elegant hover:shadow-gold transition-all">
+                    <Megaphone className="w-4 h-4" />
+                    Publish Announcement
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
 
-          {announcements.length > 0 && (
-            <div>
-              <h2 className="text-2xl font-bold mb-6">All Announcements</h2>
-              <div className="space-y-4">
-                {announcements.map((announcement) => (
-                  <Card key={announcement.id} className="shadow-soft">
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <h3 className="font-bold text-lg mb-2">{announcement.title}</h3>
-                          <p className="text-muted-foreground mb-2">{announcement.content}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Posted on {new Date(announcement.created_at).toLocaleDateString()}
-                          </p>
+            {/* Announcements List */}
+            {announcements.length > 0 && (
+              <div>
+                <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                  <Megaphone className="w-6 h-6 text-primary" />
+                  All Announcements ({announcements.length})
+                </h2>
+                <div className="space-y-4">
+                  {announcements.map((announcement, index) => (
+                    <Card 
+                      key={announcement.id} 
+                      className="glass-card border-border/50 hover:shadow-elegant transition-all animate-fade-in"
+                      style={{ animationDelay: `${index * 0.1}s` }}
+                    >
+                      <CardContent className="pt-6">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <h3 className="font-bold text-lg mb-2">{announcement.title}</h3>
+                            <p className="text-muted-foreground mb-3">{announcement.content}</p>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              Posted on {format(new Date(announcement.created_at), "PPP")}
+                            </p>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            onClick={() => handleDelete(announcement.id)}
+                            className="hover:shadow-md transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          onClick={() => handleDelete(announcement.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </section>
       </main>
 
       <Footer />

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { PenLine, ArrowLeft, MessageCircle, Sparkles, Send, Calendar, User } from "lucide-react";
 
 interface BlogPost {
   id: string;
@@ -100,7 +101,7 @@ const Blog = () => {
   };
 
   const verifyCreatePassword = async (password: string) => {
-    const { data, error } = await supabase.functions.invoke(
+    const { data } = await supabase.functions.invoke(
       "verify-admin-password",
       {
         body: { password, action: "blog_create" },
@@ -247,162 +248,223 @@ const Blog = () => {
   };
 
   return (
-    <div className='min-h-screen bg-background'>
+    <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <main className='container mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-20'>
-        <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8'>
-          <h1 className='text-3xl sm:text-4xl font-bold'>Blog</h1>
-          <Dialog
-            open={isCreateDialogOpen}
-            onOpenChange={setIsCreateDialogOpen}
-          >
-            <DialogTrigger asChild>
-              <Button>Create Post</Button>
-            </DialogTrigger>
-            <DialogContent className='max-w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto'>
-              <DialogHeader>
-                <DialogTitle>Create New Post</DialogTitle>
-              </DialogHeader>
-              <div className='space-y-4'>
-                <Input
-                  placeholder='Post Title'
-                  value={newPost.title}
-                  onChange={(e) =>
-                    setNewPost({ ...newPost, title: e.target.value })
-                  }
-                />
-                <Textarea
-                  placeholder='Content'
-                  value={newPost.content}
-                  onChange={(e) =>
-                    setNewPost({ ...newPost, content: e.target.value })
-                  }
-                  rows={8}
-                />
-                <Input
-                  placeholder='Author Name'
-                  value={newPost.authorName}
-                  onChange={(e) =>
-                    setNewPost({ ...newPost, authorName: e.target.value })
-                  }
-                />
-                <Input
-                  type='file'
-                  accept='image/jpeg,image/png,image/webp'
-                  onChange={(e) =>
-                    setNewPost({
-                      ...newPost,
-                      image: e.target.files?.[0] || null,
-                    })
-                  }
-                />
-                <Input
-                  type='password'
-                  placeholder='Enter password'
-                  value={createPassword}
-                  onChange={(e) => setCreatePassword(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleCreatePost()}
-                />
-                <Button onClick={handleCreatePost} className='w-full'>
-                  Create Post
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {selectedPost ? (
-          <div className='space-y-6'>
-            <Button variant='outline' onClick={() => setSelectedPost(null)}>
-              ← Back to Posts
-            </Button>
-            <Card>
-              <CardHeader>
-                <CardTitle>{selectedPost.title}</CardTitle>
-                <p className='text-sm text-muted-foreground'>
-                  By {selectedPost.author_name} on{" "}
-                  {format(new Date(selectedPost.created_at), "PPP")}
-                </p>
-              </CardHeader>
-              <CardContent>
-                {selectedPost.image_url && (
-                  <img
-                    src={selectedPost.image_url}
-                    alt={selectedPost.title}
-                    className='w-full h-96 object-cover rounded-lg mb-4'
-                  />
-                )}
-                <p className='whitespace-pre-wrap'>{selectedPost.content}</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Comments ({comments.length})</CardTitle>
-              </CardHeader>
-              <CardContent className='space-y-4'>
-                {comments.map((comment) => (
-                  <div key={comment.id} className='border-b pb-4'>
-                    <p className='font-semibold'>{comment.name}</p>
-                    <p className='text-sm text-muted-foreground'>
-                      {format(new Date(comment.created_at), "PPP")}
-                    </p>
-                    <p className='mt-2'>{comment.comment}</p>
+      
+      <main className="flex-1">
+        {/* Hero Section */}
+        {!selectedPost && (
+          <section className="relative py-20 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/10" />
+            <div className="absolute top-20 left-20 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-float" />
+            <div className="absolute bottom-10 right-20 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }} />
+            
+            <div className="container mx-auto px-4 relative z-10">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                <div className="text-center md:text-left max-w-2xl">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 animate-fade-in">
+                    <Sparkles className="w-4 h-4" />
+                    Insights & Inspiration
                   </div>
-                ))}
-                <div className='space-y-2 mt-6'>
-                  <h3 className='font-semibold'>Add a Comment</h3>
-                  <Input
-                    placeholder='Your Name'
-                    value={newComment.name}
-                    onChange={(e) =>
-                      setNewComment({ ...newComment, name: e.target.value })
-                    }
-                  />
-                  <Textarea
-                    placeholder='Your Comment'
-                    value={newComment.comment}
-                    onChange={(e) =>
-                      setNewComment({ ...newComment, comment: e.target.value })
-                    }
-                    rows={4}
-                  />
-                  <Button onClick={handleAddComment}>Submit Comment</Button>
+                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 animate-fade-in">
+                    Our <span className="text-gradient">Blog</span>
+                  </h1>
+                  <p className="text-lg md:text-xl text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                    Discover articles, teachings, and insights for spiritual growth
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        ) : (
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6'>
-            {posts.map((post) => (
-              <Card
-                key={post.id}
-                className='cursor-pointer hover:shadow-lg transition-shadow'
-                onClick={() => setSelectedPost(post)}
-              >
-                {post.image_url && (
-                  <img
-                    src={post.image_url}
-                    alt={post.title}
-                    className='w-full h-48 object-cover rounded-t-lg'
-                  />
+                <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="lg" className="gap-2 shadow-elegant hover:shadow-gold transition-all animate-fade-in" style={{ animationDelay: '0.3s' }}>
+                      <PenLine className="h-5 w-5" />
+                      Create Post
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto glass-card border-border/50">
+                    <DialogHeader>
+                      <DialogTitle className="text-2xl">Create New Post</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <Input
+                        placeholder="Post Title"
+                        value={newPost.title}
+                        onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
+                        className="border-border/50"
+                      />
+                      <Textarea
+                        placeholder="Content"
+                        value={newPost.content}
+                        onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                        rows={8}
+                        className="border-border/50"
+                      />
+                      <Input
+                        placeholder="Author Name"
+                        value={newPost.authorName}
+                        onChange={(e) => setNewPost({ ...newPost, authorName: e.target.value })}
+                        className="border-border/50"
+                      />
+                      <Input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(e) => setNewPost({ ...newPost, image: e.target.files?.[0] || null })}
+                        className="border-border/50"
+                      />
+                      <Input
+                        type="password"
+                        placeholder="Enter password"
+                        value={createPassword}
+                        onChange={(e) => setCreatePassword(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleCreatePost()}
+                        className="border-border/50"
+                      />
+                      <Button onClick={handleCreatePost} className="w-full">
+                        Create Post
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Content */}
+        <section className="py-12 container mx-auto px-4">
+          {selectedPost ? (
+            <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
+              <Button variant="outline" onClick={() => setSelectedPost(null)} className="gap-2 hover:shadow-md transition-all">
+                <ArrowLeft className="w-4 h-4" />
+                Back to Posts
+              </Button>
+              
+              <Card className="glass-card border-border/50 overflow-hidden">
+                {selectedPost.image_url && (
+                  <div className="relative h-64 md:h-96 overflow-hidden">
+                    <img
+                      src={selectedPost.image_url}
+                      alt={selectedPost.title}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+                  </div>
                 )}
-                <CardHeader>
-                  <CardTitle>{post.title}</CardTitle>
-                  <p className='text-sm text-muted-foreground'>
-                    By {post.author_name}
-                  </p>
-                  <p className='text-xs text-muted-foreground'>
-                    {format(new Date(post.created_at), "PPP")}
-                  </p>
+                <CardHeader className="relative">
+                  <CardTitle className="text-2xl md:text-3xl">{selectedPost.title}</CardTitle>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <User className="w-4 h-4" />
+                      {selectedPost.author_name}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      {format(new Date(selectedPost.created_at), "PPP")}
+                    </span>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <p className='line-clamp-3'>{post.content}</p>
+                  <p className="whitespace-pre-wrap text-foreground/80 leading-relaxed">{selectedPost.content}</p>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        )}
+
+              <Card className="glass-card border-border/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageCircle className="w-5 h-5 text-primary" />
+                    Comments ({comments.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {comments.map((comment, index) => (
+                    <div 
+                      key={comment.id} 
+                      className="border-b border-border/50 pb-4 last:border-0 animate-fade-in"
+                      style={{ animationDelay: `${index * 0.1}s` }}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                          <User className="w-4 h-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">{comment.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(comment.created_at), "PPP")}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-foreground/80 ml-10">{comment.comment}</p>
+                    </div>
+                  ))}
+                  
+                  <div className="space-y-4 mt-8 pt-6 border-t border-border/50">
+                    <h3 className="font-semibold text-lg">Add a Comment</h3>
+                    <Input
+                      placeholder="Your Name"
+                      value={newComment.name}
+                      onChange={(e) => setNewComment({ ...newComment, name: e.target.value })}
+                      className="border-border/50"
+                    />
+                    <Textarea
+                      placeholder="Your Comment"
+                      value={newComment.comment}
+                      onChange={(e) => setNewComment({ ...newComment, comment: e.target.value })}
+                      rows={4}
+                      className="border-border/50"
+                    />
+                    <Button onClick={handleAddComment} className="gap-2">
+                      <Send className="w-4 h-4" />
+                      Submit Comment
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <>
+              {posts.length === 0 ? (
+                <div className="text-center py-16 glass-card rounded-2xl max-w-xl mx-auto">
+                  <PenLine className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
+                  <p className="text-muted-foreground text-lg">No blog posts yet. Create the first one!</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {posts.map((post, index) => (
+                    <Card
+                      key={post.id}
+                      className="group glass-card border-border/50 cursor-pointer hover:shadow-elegant transition-all duration-500 animate-fade-in overflow-hidden"
+                      style={{ animationDelay: `${index * 0.1}s` }}
+                      onClick={() => setSelectedPost(post)}
+                    >
+                      {post.image_url && (
+                        <div className="relative h-48 overflow-hidden">
+                          <img
+                            src={post.image_url}
+                            alt={post.title}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      )}
+                      <CardHeader>
+                        <CardTitle className="line-clamp-2 group-hover:text-primary transition-colors">{post.title}</CardTitle>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <User className="w-3 h-3" />
+                          <span>{post.author_name}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(post.created_at), "PPP")}
+                        </p>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="line-clamp-3 text-foreground/70">{post.content}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </section>
       </main>
       <Footer />
     </div>
