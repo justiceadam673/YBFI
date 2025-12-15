@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { Menu, X, ChevronDown, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,6 +23,7 @@ const Navbar = () => {
     { name: "Books", path: "/books" },
     { name: "Blog", path: "/blog" },
     { name: "Visions & Dreams", path: "/visions-dreams" },
+    { name: "GospelBuddy.AI", path: "/gospel-buddy" },
     { name: "Support", path: "/partner" },
     { name: "Admin Q&A", path: "/admin-qa" },
     { name: "Admin News", path: "/admin-announcements" },
@@ -84,6 +85,12 @@ const Navbar = () => {
                 <DropdownMenuItem asChild>
                   <Link to='/visions-dreams' className='w-full cursor-pointer'>
                     Visions & Dreams
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to='/gospel-buddy' className='w-full cursor-pointer flex items-center gap-2'>
+                    <Bot className="h-4 w-4 text-primary" />
+                    GospelBuddy.AI
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -195,6 +202,7 @@ const Navbar = () => {
                     variant={isActive(link.path) ? "default" : "ghost"}
                     className='w-full justify-start transition-smooth'
                   >
+                    {link.name === "GospelBuddy.AI" && <Bot className="h-4 w-4 mr-2 text-primary" />}
                     {link.name}
                   </Button>
                 </Link>
