@@ -315,31 +315,44 @@ const GospelBuddy = () => {
     utterance.pitch = 1;
     utterance.volume = 1;
 
-    // Try to use a good voice
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(
-      (v) => v.lang.startsWith("en") && (v.name.includes("Google") || v.name.includes("Microsoft"))
-    ) || voices.find((v) => v.lang.startsWith("en"));
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
+    // Ensure voices are loaded before speaking
+    const setVoiceAndSpeak = () => {
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(
+        (v) => v.lang.startsWith("en") && (v.name.includes("Google") || v.name.includes("Microsoft"))
+      ) || voices.find((v) => v.lang.startsWith("en"));
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        setSpeakingMessageId(messageId);
+      };
+
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        setSpeakingMessageId(null);
+      };
+
+      utterance.onerror = (event) => {
+        console.error("Speech error:", event);
+        setIsSpeaking(false);
+        setSpeakingMessageId(null);
+      };
+
+      window.speechSynthesis.speak(utterance);
+    };
+
+    // Check if voices are loaded
+    if (window.speechSynthesis.getVoices().length > 0) {
+      setVoiceAndSpeak();
+    } else {
+      // Wait for voices to load
+      window.speechSynthesis.onvoiceschanged = () => {
+        setVoiceAndSpeak();
+      };
     }
-
-    utterance.onstart = () => {
-      setIsSpeaking(true);
-      setSpeakingMessageId(messageId);
-    };
-
-    utterance.onend = () => {
-      setIsSpeaking(false);
-      setSpeakingMessageId(null);
-    };
-
-    utterance.onerror = () => {
-      setIsSpeaking(false);
-      setSpeakingMessageId(null);
-    };
-
-    window.speechSynthesis.speak(utterance);
   };
 
   const stopSpeaking = () => {
