@@ -20,6 +20,7 @@ import GospelBuddy from "./pages/GospelBuddy";
 import InstallApp from "./pages/InstallApp";
 import PrayerRequests from "./pages/PrayerRequests";
 import Auth from "./pages/Auth";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import InstallPrompt from "./components/InstallPrompt";
 
@@ -35,6 +36,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/gallery" element={<Gallery />} />
             <Route path="/testimonies" element={<Testimonies />} />
