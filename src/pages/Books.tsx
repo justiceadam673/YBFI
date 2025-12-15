@@ -158,12 +158,22 @@ const Books = () => {
     },
   });
 
-  const handlePasswordCheck = () => {
-    if (password === "BOOKS") {
-      setIsAuthenticated(true);
-      toast.success("Access granted!");
-    } else {
-      toast.error("Incorrect password");
+  const handlePasswordCheck = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-admin-password', {
+        body: { password, action: 'books_upload' }
+      });
+      
+      if (error) throw error;
+      
+      if (data.valid) {
+        setIsAuthenticated(true);
+        toast.success("Access granted!");
+      } else {
+        toast.error("Incorrect password");
+      }
+    } catch (error) {
+      toast.error("Failed to verify password");
     }
   };
 
