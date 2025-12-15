@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Lock, Plus } from "lucide-react";
+import { Lock, Plus, Image as ImageIcon, Sparkles } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -59,7 +59,6 @@ const Gallery = () => {
   };
 
   const convertToJpg = async (file: File): Promise<Blob> => {
-    // Prefer modern, reliable decoding path
     try {
       if ('createImageBitmap' in window) {
         const bitmap = await createImageBitmap(file);
@@ -79,7 +78,6 @@ const Gallery = () => {
       // Fallback below
     }
 
-    // Fallback using object URL + HTMLImageElement
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
@@ -108,6 +106,7 @@ const Gallery = () => {
       img.src = URL.createObjectURL(file);
     });
   };
+
   const handleUploadImage = async () => {
     if (!newImage.file) {
       toast({ title: "Please select an image", variant: "destructive" });
@@ -119,7 +118,6 @@ const Gallery = () => {
       const ext = original.name.split('.').pop()?.toLowerCase() || '';
       const isJpeg = original.type === 'image/jpeg' || ext === 'jpg' || ext === 'jpeg';
 
-      // HEIC/HEIF are not supported by most browsers' canvas decoders
       if (original.type === 'image/heic' || original.type === 'image/heif') {
         toast({
           title: "Unsupported image format",
@@ -176,35 +174,50 @@ const Gallery = () => {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       
-      <main className="flex-1 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12 animate-fade-in">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Our Gallery</h1>
-            <div className="w-24 h-1 bg-accent mx-auto mb-6"></div>
-            <p className="text-lg text-muted-foreground">
-              Moments of growth, fellowship, and community
-            </p>
+      <main className="flex-1">
+        {/* Hero Section */}
+        <section className="relative py-20 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/10" />
+          <div className="absolute top-20 right-10 w-72 h-72 bg-accent/10 rounded-full blur-3xl animate-float" />
+          <div className="absolute bottom-10 left-10 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }} />
+          
+          <div className="container mx-auto px-4 relative z-10">
+            <div className="text-center max-w-3xl mx-auto">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 animate-fade-in">
+                <Sparkles className="w-4 h-4" />
+                Memories & Moments
+              </div>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 animate-fade-in">
+                Our <span className="text-gradient">Gallery</span>
+              </h1>
+              <p className="text-lg md:text-xl text-muted-foreground mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                Moments of growth, fellowship, and community captured in time
+              </p>
+            </div>
           </div>
+        </section>
 
-          <div className="mb-6 flex justify-end">
+        {/* Gallery Section */}
+        <section className="py-12 container mx-auto px-4">
+          <div className="mb-8 flex justify-end">
             <Dialog open={isAdminDialogOpen} onOpenChange={setIsAdminDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Plus className="w-4 h-4 mr-2" />
+                <Button variant="outline" className="gap-2 hover:shadow-elegant transition-all">
+                  <Plus className="w-4 h-4" />
                   Upload Image
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="glass-card border-border/50">
                 <DialogHeader>
-                  <DialogTitle>Upload Gallery Image</DialogTitle>
+                  <DialogTitle className="text-xl">Upload Gallery Image</DialogTitle>
                 </DialogHeader>
                 {!isAuthenticated ? (
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
-                      <Lock className="w-4 h-4" />
+                      <Lock className="w-4 h-4 text-muted-foreground" />
                       <span className="text-sm text-muted-foreground">Enter password to continue</span>
                     </div>
                     <Input
@@ -213,6 +226,7 @@ const Gallery = () => {
                       value={adminPassword}
                       onChange={(e) => setAdminPassword(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && verifyPassword()}
+                      className="border-border/50"
                     />
                     <Button onClick={verifyPassword} className="w-full">Verify</Button>
                   </div>
@@ -222,11 +236,13 @@ const Gallery = () => {
                       placeholder="Image Title (optional)"
                       value={newImage.title}
                       onChange={(e) => setNewImage({ ...newImage, title: e.target.value })}
+                      className="border-border/50"
                     />
                     <Input
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
                       onChange={(e) => setNewImage({ ...newImage, file: e.target.files?.[0] || null })}
+                      className="border-border/50"
                     />
                     <Button onClick={handleUploadImage} className="w-full">Upload Image</Button>
                   </div>
@@ -235,24 +251,32 @@ const Gallery = () => {
             </Dialog>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {allImages.map((image, index) => (
-              <div
-                key={index}
-                className="group relative overflow-hidden rounded-lg shadow-soft hover:shadow-gold transition-smooth animate-fade-in aspect-square"
-              >
-                <img
-                  src={image.src}
-                  alt={image.alt}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-primary/90 to-transparent opacity-0 group-hover:opacity-100 transition-smooth flex items-end p-6">
-                  <h3 className="text-white font-bold text-lg">{image.title}</h3>
+          {allImages.length === 0 ? (
+            <div className="text-center py-16 glass-card rounded-2xl">
+              <ImageIcon className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
+              <p className="text-muted-foreground text-lg">No images in the gallery yet.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {allImages.map((image, index) => (
+                <div
+                  key={index}
+                  className="group relative overflow-hidden rounded-2xl shadow-elegant hover:shadow-gold transition-all duration-500 animate-fade-in aspect-square"
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <img
+                    src={image.src}
+                    alt={image.alt}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-end p-6">
+                    <h3 className="text-background font-bold text-lg transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">{image.title}</h3>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
+              ))}
+            </div>
+          )}
+        </section>
       </main>
 
       <Footer />
