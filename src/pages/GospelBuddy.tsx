@@ -637,260 +637,290 @@ const GospelBuddy = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <div className="relative">
-              <Bot className="h-10 w-10 text-primary" />
-              <Sparkles className="h-4 w-4 text-yellow-400 absolute -top-1 -right-1 animate-pulse" />
-            </div>
-            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary via-purple-500 to-blue-500 bg-clip-text text-transparent">
-              GospelBuddy.AI
-            </h1>
-            
-            {/* History Button */}
-            <Sheet open={showHistory} onOpenChange={setShowHistory}>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="relative">
-                  <History className="h-5 w-5" />
-                  {conversations.length > 0 && (
-                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] text-primary-foreground flex items-center justify-center">
-                      {conversations.length}
-                    </span>
-                  )}
-                </Button>
-              </SheetTrigger>
-              <SheetContent className="w-full sm:max-w-lg">
-                <SheetHeader>
-                  <SheetTitle className="flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <History className="h-5 w-5" />
-                      Conversation History
-                    </span>
-                    <Button size="sm" onClick={startNewConversation}>
-                      <Plus className="h-4 w-4 mr-1" />
-                      New
-                    </Button>
-                  </SheetTitle>
-                </SheetHeader>
-                <ScrollArea className="h-[calc(100vh-120px)] mt-4">
-                  {conversations.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <History className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                      <p>No conversation history</p>
-                      <p className="text-sm">Your conversations will appear here</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 pr-4">
-                      {conversations.map((conv) => (
-                        <Card
-                          key={conv.id}
-                          className={`p-3 cursor-pointer hover:bg-muted/50 transition-colors ${
-                            currentConversationId === conv.id ? "border-primary" : ""
-                          }`}
-                          onClick={() => loadConversation(conv)}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">{conv.title}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {formatDate(conv.updatedAt)} • {conv.messages.length} messages
-                              </p>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteConversation(conv.id);
-                              }}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </SheetContent>
-            </Sheet>
-
-            {/* Favorites Button */}
-            <Sheet open={showFavorites} onOpenChange={setShowFavorites}>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="relative">
-                  <Star className="h-5 w-5" />
-                  {favorites.length > 0 && (
-                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] text-primary-foreground flex items-center justify-center">
-                      {favorites.length}
-                    </span>
-                  )}
-                </Button>
-              </SheetTrigger>
-              <SheetContent className="w-full sm:max-w-lg">
-                <SheetHeader>
-                  <SheetTitle className="flex items-center gap-2">
-                    <Star className="h-5 w-5 text-yellow-500" />
-                    Saved Favorites ({favorites.length})
-                  </SheetTitle>
-                </SheetHeader>
-                <ScrollArea className="h-[calc(100vh-120px)] mt-4">
-                  {favorites.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <Star className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                      <p>No favorites yet</p>
-                      <p className="text-sm">Save responses you like for later!</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4 pr-4">
-                      {favorites.map((fav) => (
-                        <Card key={fav.id} className="p-4">
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
-                              {getModeLabel(fav.mode)}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                              onClick={() => removeFromFavorites(fav.id)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          {fav.query && (
-                            <p className="text-xs text-muted-foreground mb-2 italic">
-                              Q: {fav.query}
-                            </p>
-                          )}
-                          <div className="text-sm max-h-40 overflow-y-auto">
-                            <MarkdownRenderer content={fav.content.substring(0, 500) + (fav.content.length > 500 ? "..." : "")} />
-                          </div>
-                          <div className="flex items-center gap-2 mt-3 pt-2 border-t">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => copyToClipboard(fav.content, fav.id)}
-                            >
-                              <Copy className="h-3 w-3 mr-1" />
-                              Copy
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => speakText(fav.content, fav.id)}
-                            >
-                              <Volume2 className="h-3 w-3 mr-1" />
-                              Listen
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => shareToWhatsApp(fav.content)}
-                            >
-                              <MessageCircle className="h-3 w-3 mr-1" />
-                              Share
-                            </Button>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </SheetContent>
-            </Sheet>
-          </div>
-          <p className="text-muted-foreground text-sm md:text-base max-w-xl mx-auto">
-            Your AI companion for scripture, confessions, answers, and spiritual growth
-          </p>
-        </div>
-
-        {/* Mode Tabs */}
-        <Tabs value={activeMode} onValueChange={(v) => setActiveMode(v as AIMode)} className="mb-4">
-          <TabsList className="grid grid-cols-5 h-auto p-1 bg-muted/50">
-            {modes.map((mode) => (
-              <TabsTrigger
-                key={mode.id}
-                value={mode.id}
-                className="flex flex-col items-center gap-1 py-2 px-1 data-[state=active]:bg-background"
-              >
-                <mode.icon className="h-4 w-4" />
-                <span className="text-[10px] sm:text-xs font-medium">{mode.label}</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-
-        {/* Mode Description */}
-        <Card className={`mb-4 bg-gradient-to-r ${currentMode.color} text-white`}>
-          <CardContent className="p-3 flex items-center gap-3">
-            <currentMode.icon className="h-5 w-5 flex-shrink-0" />
-            <div>
-              <p className="font-medium text-sm">{currentMode.label} Mode</p>
-              <p className="text-xs opacity-90">{currentMode.description}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Chat Area */}
-        <Card className="flex-1 flex flex-col min-h-0 mb-4">
-          <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-            {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center py-8">
-                <div className="text-center mb-6">
-                  <BookMarked className="h-12 w-12 text-primary/30 mx-auto mb-3" />
-                  <h3 className="font-semibold text-lg mb-1">Start a Conversation</h3>
-                  <p className="text-sm text-muted-foreground max-w-md">
-                    Ask about scriptures, create confessions, get answers to your questions, or get help with sermons
-                  </p>
+      <main className="flex-1 flex flex-col">
+        {/* Hero Section */}
+        <section className="relative py-12 md:py-16 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/10" />
+          <div className="absolute top-10 left-10 w-48 h-48 bg-primary/10 rounded-full blur-3xl animate-float" />
+          <div className="absolute bottom-5 right-10 w-64 h-64 bg-accent/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }} />
+          
+          <div className="container mx-auto px-4 relative z-10">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="text-center md:text-left">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4 animate-fade-in">
+                  <Sparkles className="w-4 h-4" />
+                  AI-Powered Spiritual Assistant
                 </div>
-
-                {/* Quick Prompts */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
-                  {quickPrompts[activeMode].map((prompt, idx) => (
-                    <Button
-                      key={idx}
-                      variant="outline"
-                      className="text-left h-auto py-2 px-3 text-xs sm:text-sm justify-start"
-                      onClick={() => {
-                        setInput(prompt);
-                        textareaRef.current?.focus();
-                      }}
-                    >
-                      <Sparkles className="h-3 w-3 mr-2 flex-shrink-0 text-primary" />
-                      <span className="line-clamp-2">{prompt}</span>
-                    </Button>
-                  ))}
+                <div className="flex items-center justify-center md:justify-start gap-3 mb-2 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+                  <div className="relative">
+                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-elegant">
+                      <Bot className="h-8 w-8 text-primary-foreground" />
+                    </div>
+                    <Sparkles className="h-5 w-5 text-yellow-400 absolute -top-2 -right-2 animate-pulse" />
+                  </div>
+                  <h1 className="text-4xl md:text-5xl font-bold">
+                    <span className="text-gradient">GospelBuddy</span>
+                    <span className="text-primary">.AI</span>
+                  </h1>
                 </div>
+                <p className="text-muted-foreground text-base md:text-lg max-w-xl animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                  Your AI companion for scripture, confessions, answers, and spiritual growth
+                </p>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {messages.map((message, index) => (
-                  <div
-                    key={message.id}
-                    className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    {message.role === "assistant" && (
-                      <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Bot className="h-4 w-4 text-primary" />
-                      </div>
-                    )}
+              
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+                {/* History Button */}
+                <Sheet open={showHistory} onOpenChange={setShowHistory}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="lg" className="gap-2 glass-card border-border/50 hover:shadow-elegant transition-all">
+                      <History className="h-5 w-5" />
+                      <span className="hidden sm:inline">History</span>
+                      {conversations.length > 0 && (
+                        <span className="h-5 w-5 rounded-full bg-primary text-xs text-primary-foreground flex items-center justify-center">
+                          {conversations.length}
+                        </span>
+                      )}
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent className="w-full sm:max-w-lg glass-card">
+                    <SheetHeader>
+                      <SheetTitle className="flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                          <History className="h-5 w-5 text-primary" />
+                          Conversation History
+                        </span>
+                        <Button size="sm" onClick={startNewConversation} className="gap-1">
+                          <Plus className="h-4 w-4" />
+                          New
+                        </Button>
+                      </SheetTitle>
+                    </SheetHeader>
+                    <ScrollArea className="h-[calc(100vh-120px)] mt-4">
+                      {conversations.length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <History className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                          <p>No conversation history</p>
+                          <p className="text-sm">Your conversations will appear here</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 pr-4">
+                          {conversations.map((conv) => (
+                            <Card
+                              key={conv.id}
+                              className={`p-3 cursor-pointer glass-card border-border/50 hover:shadow-md transition-all ${
+                                currentConversationId === conv.id ? "border-primary shadow-elegant" : ""
+                              }`}
+                              onClick={() => loadConversation(conv)}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">{conv.title}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {formatDate(conv.updatedAt)} • {conv.messages.length} messages
+                                  </p>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteConversation(conv.id);
+                                  }}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </SheetContent>
+                </Sheet>
+
+                {/* Favorites Button */}
+                <Sheet open={showFavorites} onOpenChange={setShowFavorites}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="lg" className="gap-2 glass-card border-border/50 hover:shadow-elegant transition-all">
+                      <Star className="h-5 w-5 text-yellow-500" />
+                      <span className="hidden sm:inline">Favorites</span>
+                      {favorites.length > 0 && (
+                        <span className="h-5 w-5 rounded-full bg-yellow-500 text-xs text-primary-foreground flex items-center justify-center">
+                          {favorites.length}
+                        </span>
+                      )}
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent className="w-full sm:max-w-lg glass-card">
+                    <SheetHeader>
+                      <SheetTitle className="flex items-center gap-2">
+                        <Star className="h-5 w-5 text-yellow-500" />
+                        Saved Favorites ({favorites.length})
+                      </SheetTitle>
+                    </SheetHeader>
+                    <ScrollArea className="h-[calc(100vh-120px)] mt-4">
+                      {favorites.length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <Star className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                          <p>No favorites yet</p>
+                          <p className="text-sm">Save responses you like for later!</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4 pr-4">
+                          {favorites.map((fav) => (
+                            <Card key={fav.id} className="p-4 glass-card border-border/50">
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
+                                  {getModeLabel(fav.mode)}
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                  onClick={() => removeFromFavorites(fav.id)}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              {fav.query && (
+                                <p className="text-xs text-muted-foreground mb-2 italic">
+                                  Q: {fav.query}
+                                </p>
+                              )}
+                              <div className="text-sm max-h-40 overflow-y-auto">
+                                <MarkdownRenderer content={fav.content.substring(0, 500) + (fav.content.length > 500 ? "..." : "")} />
+                              </div>
+                              <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/50">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() => copyToClipboard(fav.content, fav.id)}
+                                >
+                                  <Copy className="h-3 w-3 mr-1" />
+                                  Copy
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() => speakText(fav.content, fav.id)}
+                                >
+                                  <Volume2 className="h-3 w-3 mr-1" />
+                                  Listen
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() => shareToWhatsApp(fav.content)}
+                                >
+                                  <MessageCircle className="h-3 w-3 mr-1" />
+                                  Share
+                                </Button>
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </SheetContent>
+                </Sheet>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Chat Container */}
+        <div className="flex-1 max-w-5xl mx-auto w-full px-4 pb-6 flex flex-col">
+          {/* Mode Tabs */}
+          <Tabs value={activeMode} onValueChange={(v) => setActiveMode(v as AIMode)} className="mb-4">
+            <TabsList className="grid grid-cols-5 h-auto p-1.5 bg-muted/50 glass-card border border-border/50 rounded-xl">
+              {modes.map((mode) => (
+                <TabsTrigger
+                  key={mode.id}
+                  value={mode.id}
+                  className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md transition-all"
+                >
+                  <mode.icon className="h-4 w-4" />
+                  <span className="text-[10px] sm:text-xs font-medium">{mode.label}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
+          {/* Mode Description */}
+          <Card className={`mb-4 glass-card border-0 overflow-hidden animate-fade-in`}>
+            <div className={`absolute inset-0 bg-gradient-to-r ${currentMode.color} opacity-90`} />
+            <CardContent className="p-4 flex items-center gap-3 relative z-10 text-white">
+              <div className="h-10 w-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <currentMode.icon className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-semibold">{currentMode.label} Mode</p>
+                <p className="text-sm opacity-90">{currentMode.description}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Chat Area */}
+          <Card className="flex-1 flex flex-col min-h-0 mb-4 glass-card border-border/50">
+            <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+              {messages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center py-12">
+                  <div className="text-center mb-8 animate-fade-in">
+                    <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mx-auto mb-4">
+                      <BookMarked className="h-10 w-10 text-primary" />
+                    </div>
+                    <h3 className="font-semibold text-xl mb-2">Start a Conversation</h3>
+                    <p className="text-muted-foreground max-w-md">
+                      Ask about scriptures, create confessions, get answers to your questions, or get help with sermons
+                    </p>
+                  </div>
+
+                  {/* Quick Prompts */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
+                    {quickPrompts[activeMode].map((prompt, idx) => (
+                      <Button
+                        key={idx}
+                        variant="outline"
+                        className="text-left h-auto py-3 px-4 text-sm justify-start glass-card border-border/50 hover:shadow-md transition-all animate-fade-in"
+                        style={{ animationDelay: `${idx * 0.1}s` }}
+                        onClick={() => {
+                          setInput(prompt);
+                          textareaRef.current?.focus();
+                        }}
+                      >
+                        <Sparkles className="h-4 w-4 mr-2 flex-shrink-0 text-primary" />
+                        <span className="line-clamp-2">{prompt}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {messages.map((message, index) => (
                     <div
-                      className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                        message.role === "user"
-                          ? "bg-primary text-primary-foreground rounded-br-sm"
-                          : "bg-muted rounded-bl-sm"
-                      }`}
+                      key={message.id}
+                      className={`flex gap-3 animate-fade-in ${message.role === "user" ? "justify-end" : "justify-start"}`}
                     >
+                      {message.role === "assistant" && (
+                        <div className="flex-shrink-0 h-9 w-9 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center shadow-sm">
+                          <Bot className="h-5 w-5 text-primary" />
+                        </div>
+                      )}
+                      <div
+                        className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm ${
+                          message.role === "user"
+                            ? "bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-br-sm"
+                            : "glass-card border border-border/50 rounded-bl-sm"
+                        }`}
+                      >
                       {message.role === "assistant" ? (
                         <MarkdownRenderer content={message.content} />
                       ) : (
@@ -978,28 +1008,28 @@ const GospelBuddy = () => {
                         </div>
                       )}
                     </div>
-                    {message.role === "user" && (
-                      <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-                        <User className="h-4 w-4 text-primary-foreground" />
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {isLoading && (
-                  <div className="flex gap-3">
-                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Bot className="h-4 w-4 text-primary" />
+                      {message.role === "user" && (
+                        <div className="flex-shrink-0 h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-sm">
+                          <User className="h-5 w-5 text-primary-foreground" />
+                        </div>
+                      )}
                     </div>
-                    <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm text-muted-foreground">Searching the scriptures...</span>
+                  ))}
+                  {isLoading && (
+                    <div className="flex gap-3 animate-fade-in">
+                      <div className="flex-shrink-0 h-9 w-9 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                        <Bot className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="glass-card border border-border/50 rounded-2xl rounded-bl-sm px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          <span className="text-sm text-muted-foreground">Searching the scriptures...</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
           </ScrollArea>
 
           {/* Clear Chat Button */}
@@ -1025,59 +1055,60 @@ const GospelBuddy = () => {
               </Button>
             </div>
           )}
-        </Card>
+          </Card>
 
-        {/* Input Area */}
-        <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm py-2">
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <Button
-              type="button"
-              variant={isListening ? "default" : "outline"}
-              size="icon"
-              className={`h-[50px] w-[50px] shrink-0 ${isListening ? "bg-red-500 hover:bg-red-600 animate-pulse" : ""}`}
-              onClick={toggleListening}
-              disabled={isLoading}
-            >
-              {isListening ? (
-                <MicOff className="h-5 w-5" />
-              ) : (
-                <Mic className="h-5 w-5" />
-              )}
-            </Button>
-            <div className="flex-1 relative">
-              <Textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={isListening ? "Listening... speak now" : currentMode.placeholder}
-                className="min-h-[50px] max-h-[150px] resize-none pr-4"
-                rows={1}
-              />
-            </div>
-            <Button
-              type="submit"
-              size="icon"
-              className="h-[50px] w-[50px] shrink-0"
-              disabled={isLoading || !input.trim()}
-            >
-              {isLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Send className="h-5 w-5" />
-              )}
-            </Button>
-          </form>
-          {isListening && (
-            <p className="text-xs text-center text-muted-foreground mt-2 animate-pulse">
-              🎤 Listening... Click the mic to stop
-            </p>
-          )}
-          {isSpeaking && (
-            <p className="text-xs text-center text-primary mt-2 animate-pulse">
-              🔊 Speaking... Click "Stop" to cancel
-            </p>
-          )}
+          {/* Input Area */}
+          <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm py-3 rounded-2xl">
+            <form onSubmit={handleSubmit} className="flex gap-3">
+              <Button
+                type="button"
+                variant={isListening ? "default" : "outline"}
+                size="icon"
+                className={`h-[52px] w-[52px] shrink-0 rounded-xl shadow-md transition-all ${isListening ? "bg-red-500 hover:bg-red-600 animate-pulse" : "hover:shadow-elegant"}`}
+                onClick={toggleListening}
+                disabled={isLoading}
+              >
+                {isListening ? (
+                  <MicOff className="h-5 w-5" />
+                ) : (
+                  <Mic className="h-5 w-5" />
+                )}
+              </Button>
+              <div className="flex-1 relative">
+                <Textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={isListening ? "Listening... speak now" : currentMode.placeholder}
+                  className="min-h-[52px] max-h-[150px] resize-none pr-4 rounded-xl border-border/50 glass-card"
+                  rows={1}
+                />
+              </div>
+              <Button
+                type="submit"
+                size="icon"
+                className="h-[52px] w-[52px] shrink-0 rounded-xl shadow-elegant hover:shadow-gold transition-all"
+                disabled={isLoading || !input.trim()}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Send className="h-5 w-5" />
+                )}
+              </Button>
+            </form>
+            {isListening && (
+              <p className="text-xs text-center text-muted-foreground mt-2 animate-pulse">
+                🎤 Listening... Click the mic to stop
+              </p>
+            )}
+            {isSpeaking && (
+              <p className="text-xs text-center text-primary mt-2 animate-pulse">
+                🔊 Speaking... Click "Stop" to cancel
+              </p>
+            )}
+          </div>
         </div>
       </main>
 
