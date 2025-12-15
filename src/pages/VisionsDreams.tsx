@@ -46,6 +46,8 @@ import {
   ImageIcon,
   Upload,
   Wand2,
+  Save,
+  X,
 } from "lucide-react";
 
 type VisionDream = {
@@ -69,6 +71,7 @@ const VisionsDreams = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedVision, setSelectedVision] = useState<VisionDream | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [isPlaying, setIsPlaying] = useState(false);
@@ -76,6 +79,8 @@ const VisionsDreams = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
+  const editImageInputRef = useRef<HTMLInputElement>(null);
+  const editAudioInputRef = useRef<HTMLInputElement>(null);
 
   // Upload states
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -92,6 +97,15 @@ const VisionsDreams = () => {
     date_received: new Date().toISOString().split("T")[0],
     scripture_reference: "",
     reflection_notes: "",
+    background_image_url: "",
+    audio_url: "",
+  });
+
+  // Edit form states
+  const [editFormData, setEditFormData] = useState({
+    status: "",
+    reflection_notes: "",
+    scripture_reference: "",
     background_image_url: "",
     audio_url: "",
   });
@@ -127,10 +141,39 @@ const VisionsDreams = () => {
       setIsAddDialogOpen(false);
       resetForm();
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to add vision/dream. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<VisionDream> }) => {
+      const { data, error } = await supabase
+        .from("visions_dreams")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["visions_dreams"] });
+      setSelectedVision(data as VisionDream);
+      setIsEditMode(false);
+      toast({
+        title: "Updated",
+        description: "Vision/Dream has been updated successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update. Please try again.",
         variant: "destructive",
       });
     },
@@ -167,11 +210,10 @@ const VisionsDreams = () => {
     });
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
       toast({
@@ -198,7 +240,11 @@ const VisionsDreams = () => {
         .from('visions-backgrounds')
         .getPublicUrl(filePath);
 
-      setFormData({ ...formData, background_image_url: publicUrl });
+      if (isEdit) {
+        setEditFormData({ ...editFormData, background_image_url: publicUrl });
+      } else {
+        setFormData({ ...formData, background_image_url: publicUrl });
+      }
       toast({
         title: "Image uploaded",
         description: "Background image has been uploaded successfully.",
@@ -215,11 +261,10 @@ const VisionsDreams = () => {
     }
   };
 
-  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg'];
     if (!allowedTypes.includes(file.type)) {
       toast({
@@ -246,7 +291,11 @@ const VisionsDreams = () => {
         .from('visions-audio')
         .getPublicUrl(filePath);
 
-      setFormData({ ...formData, audio_url: publicUrl });
+      if (isEdit) {
+        setEditFormData({ ...editFormData, audio_url: publicUrl });
+      } else {
+        setFormData({ ...formData, audio_url: publicUrl });
+      }
       toast({
         title: "Audio uploaded",
         description: "Background music has been uploaded successfully.",
@@ -263,8 +312,8 @@ const VisionsDreams = () => {
     }
   };
 
-  const suggestScripture = async () => {
-    if (!formData.description.trim()) {
+  const suggestScripture = async (description: string, title: string, category: string, isEdit = false) => {
+    if (!description.trim()) {
       toast({
         title: "Description required",
         description: "Please enter a description first to get scripture suggestions.",
@@ -276,17 +325,17 @@ const VisionsDreams = () => {
     setIsSuggestingScripture(true);
     try {
       const { data, error } = await supabase.functions.invoke('suggest-scripture', {
-        body: {
-          description: formData.description,
-          title: formData.title,
-          category: formData.category,
-        },
+        body: { description, title, category },
       });
 
       if (error) throw error;
 
       if (data?.scripture) {
-        setFormData({ ...formData, scripture_reference: data.scripture });
+        if (isEdit) {
+          setEditFormData({ ...editFormData, scripture_reference: data.scripture });
+        } else {
+          setFormData({ ...formData, scripture_reference: data.scripture });
+        }
         toast({
           title: "Scripture suggested",
           description: "AI has suggested relevant scripture references.",
@@ -320,14 +369,49 @@ const VisionsDreams = () => {
     });
   };
 
+  const handleEditSubmit = () => {
+    if (!selectedVision) return;
+    updateMutation.mutate({
+      id: selectedVision.id,
+      updates: {
+        status: editFormData.status,
+        reflection_notes: editFormData.reflection_notes || null,
+        scripture_reference: editFormData.scripture_reference || null,
+        background_image_url: editFormData.background_image_url || null,
+        audio_url: editFormData.audio_url || null,
+      },
+    });
+  };
+
   const openVisionDialog = (vision: VisionDream) => {
     setSelectedVision(vision);
+    setEditFormData({
+      status: vision.status,
+      reflection_notes: vision.reflection_notes || "",
+      scripture_reference: vision.scripture_reference || "",
+      background_image_url: vision.background_image_url || "",
+      audio_url: vision.audio_url || "",
+    });
     setIsViewDialogOpen(true);
+    setIsEditMode(false);
     setIsPlaying(false);
   };
 
+  const startEditMode = () => {
+    if (selectedVision) {
+      setEditFormData({
+        status: selectedVision.status,
+        reflection_notes: selectedVision.reflection_notes || "",
+        scripture_reference: selectedVision.scripture_reference || "",
+        background_image_url: selectedVision.background_image_url || "",
+        audio_url: selectedVision.audio_url || "",
+      });
+      setIsEditMode(true);
+    }
+  };
+
   useEffect(() => {
-    if (isViewDialogOpen && selectedVision?.audio_url && audioRef.current) {
+    if (isViewDialogOpen && selectedVision?.audio_url && audioRef.current && !isEditMode) {
       audioRef.current.src = selectedVision.audio_url;
       audioRef.current.play().catch(() => {});
       setIsPlaying(true);
@@ -335,7 +419,7 @@ const VisionsDreams = () => {
       audioRef.current.pause();
       setIsPlaying(false);
     }
-  }, [isViewDialogOpen, selectedVision]);
+  }, [isViewDialogOpen, selectedVision, isEditMode]);
 
   const togglePlay = () => {
     if (audioRef.current) {
@@ -448,9 +532,7 @@ const VisionsDreams = () => {
                     <Input
                       id="title"
                       value={formData.title}
-                      onChange={(e) =>
-                        setFormData({ ...formData, title: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                       placeholder="Give it a meaningful title"
                       required
                     />
@@ -460,9 +542,7 @@ const VisionsDreams = () => {
                     <Input
                       id="dreamer_name"
                       value={formData.dreamer_name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, dreamer_name: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, dreamer_name: e.target.value })}
                       placeholder="Who received this?"
                       required
                     />
@@ -474,9 +554,7 @@ const VisionsDreams = () => {
                     <Label htmlFor="category">Type</Label>
                     <Select
                       value={formData.category}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, category: value })
-                      }
+                      onValueChange={(value) => setFormData({ ...formData, category: value })}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -491,9 +569,7 @@ const VisionsDreams = () => {
                     <Label htmlFor="status">Status</Label>
                     <Select
                       value={formData.status}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, status: value })
-                      }
+                      onValueChange={(value) => setFormData({ ...formData, status: value })}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -511,9 +587,7 @@ const VisionsDreams = () => {
                       id="date_received"
                       type="date"
                       value={formData.date_received}
-                      onChange={(e) =>
-                        setFormData({ ...formData, date_received: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, date_received: e.target.value })}
                     />
                   </div>
                 </div>
@@ -523,9 +597,7 @@ const VisionsDreams = () => {
                   <Textarea
                     id="description"
                     value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Describe the vision or dream in detail..."
                     rows={4}
                     required
@@ -539,7 +611,7 @@ const VisionsDreams = () => {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={suggestScripture}
+                      onClick={() => suggestScripture(formData.description, formData.title, formData.category)}
                       disabled={isSuggestingScripture || !formData.description.trim()}
                       className="ml-auto gap-1 text-xs"
                     >
@@ -559,9 +631,7 @@ const VisionsDreams = () => {
                   <Input
                     id="scripture_reference"
                     value={formData.scripture_reference}
-                    onChange={(e) =>
-                      setFormData({ ...formData, scripture_reference: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, scripture_reference: e.target.value })}
                     placeholder="e.g., Joel 2:28, Acts 2:17"
                   />
                 </div>
@@ -571,9 +641,7 @@ const VisionsDreams = () => {
                   <Textarea
                     id="reflection_notes"
                     value={formData.reflection_notes}
-                    onChange={(e) =>
-                      setFormData({ ...formData, reflection_notes: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, reflection_notes: e.target.value })}
                     placeholder="Your thoughts, interpretations, or what God revealed..."
                     rows={3}
                   />
@@ -589,7 +657,7 @@ const VisionsDreams = () => {
                       ref={imageInputRef}
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
-                      onChange={handleImageUpload}
+                      onChange={(e) => handleImageUpload(e)}
                       className="hidden"
                     />
                     <div className="flex gap-2">
@@ -641,7 +709,7 @@ const VisionsDreams = () => {
                       ref={audioInputRef}
                       type="file"
                       accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg"
-                      onChange={handleAudioUpload}
+                      onChange={(e) => handleAudioUpload(e)}
                       className="hidden"
                     />
                     <div className="flex gap-2">
@@ -685,11 +753,7 @@ const VisionsDreams = () => {
                   </div>
                 </div>
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={addMutation.isPending}
-                >
+                <Button type="submit" className="w-full" disabled={addMutation.isPending}>
                   {addMutation.isPending ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -830,16 +894,19 @@ const VisionsDreams = () => {
           </div>
         )}
 
-        {/* View Vision Dialog */}
-        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        {/* View/Edit Vision Dialog */}
+        <Dialog open={isViewDialogOpen} onOpenChange={(open) => {
+          setIsViewDialogOpen(open);
+          if (!open) setIsEditMode(false);
+        }}>
           <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden p-0">
             {selectedVision && (
               <div className="relative">
                 {/* Background Image */}
                 <div className="absolute inset-0 z-0">
-                  {selectedVision.background_image_url ? (
+                  {(isEditMode ? editFormData.background_image_url : selectedVision.background_image_url) ? (
                     <img
-                      src={selectedVision.background_image_url}
+                      src={isEditMode ? editFormData.background_image_url : selectedVision.background_image_url!}
                       alt=""
                       className="w-full h-full object-cover"
                     />
@@ -859,26 +926,76 @@ const VisionsDreams = () => {
                             {getCategoryIcon(selectedVision.category)}
                             {selectedVision.category}
                           </Badge>
-                          <Badge className={getStatusColor(selectedVision.status)}>
-                            {selectedVision.status.replace("_", " ")}
-                          </Badge>
+                          {isEditMode ? (
+                            <Select
+                              value={editFormData.status}
+                              onValueChange={(value) => setEditFormData({ ...editFormData, status: value })}
+                            >
+                              <SelectTrigger className="w-32 h-6 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="waiting">Waiting</SelectItem>
+                                <SelectItem value="in_progress">In Progress</SelectItem>
+                                <SelectItem value="fulfilled">Fulfilled</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Badge className={getStatusColor(selectedVision.status)}>
+                              {selectedVision.status.replace("_", " ")}
+                            </Badge>
+                          )}
                         </div>
                         <DialogTitle className="text-2xl md:text-3xl">
                           {selectedVision.title}
                         </DialogTitle>
                       </div>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => deleteMutation.mutate(selectedVision.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-2">
+                        {isEditMode ? (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setIsEditMode(false)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={handleEditSubmit}
+                              disabled={updateMutation.isPending}
+                            >
+                              {updateMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Save className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={startEditMode}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => deleteMutation.mutate(selectedVision.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </DialogHeader>
 
                   {/* Audio Controls */}
-                  {selectedVision.audio_url && (
+                  {!isEditMode && selectedVision.audio_url && (
                     <div className="flex items-center gap-3 mb-6 p-3 rounded-lg bg-primary/10 border border-primary/20">
                       <Button
                         variant="ghost"
@@ -886,11 +1003,7 @@ const VisionsDreams = () => {
                         onClick={togglePlay}
                         className="hover:bg-primary/20"
                       >
-                        {isPlaying ? (
-                          <Pause className="h-5 w-5" />
-                        ) : (
-                          <Play className="h-5 w-5" />
-                        )}
+                        {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
                       </Button>
                       <div className="flex-1 text-sm text-muted-foreground">
                         Background Music
@@ -901,61 +1014,170 @@ const VisionsDreams = () => {
                         onClick={toggleMute}
                         className="hover:bg-primary/20"
                       >
-                        {isMuted ? (
-                          <VolumeX className="h-5 w-5" />
-                        ) : (
-                          <Volume2 className="h-5 w-5" />
-                        )}
+                        {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
                       </Button>
                     </div>
                   )}
 
-                  {/* Details */}
-                  <div className="space-y-6">
-                    <div className="flex flex-wrap gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-primary" />
-                        <span>{selectedVision.dreamer_name}</span>
+                  {/* Edit Mode Content */}
+                  {isEditMode ? (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
+                          Scripture Reference
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => suggestScripture(selectedVision.description, selectedVision.title, selectedVision.category, true)}
+                            disabled={isSuggestingScripture}
+                            className="ml-auto gap-1 text-xs"
+                          >
+                            {isSuggestingScripture ? (
+                              <>
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                Suggesting...
+                              </>
+                            ) : (
+                              <>
+                                <Wand2 className="h-3 w-3" />
+                                AI Suggest
+                              </>
+                            )}
+                          </Button>
+                        </Label>
+                        <Input
+                          value={editFormData.scripture_reference}
+                          onChange={(e) => setEditFormData({ ...editFormData, scripture_reference: e.target.value })}
+                          placeholder="e.g., Joel 2:28, Acts 2:17"
+                        />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-primary" />
-                        <span>
-                          {new Date(selectedVision.date_received).toLocaleDateString(
-                            "en-US",
-                            { year: "numeric", month: "long", day: "numeric" }
-                          )}
-                        </span>
+
+                      <div className="space-y-2">
+                        <Label>Reflection Notes</Label>
+                        <Textarea
+                          value={editFormData.reflection_notes}
+                          onChange={(e) => setEditFormData({ ...editFormData, reflection_notes: e.target.value })}
+                          placeholder="Your thoughts, interpretations, or what God revealed..."
+                          rows={4}
+                        />
                       </div>
-                      {selectedVision.scripture_reference && (
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-2">
+                            <ImageIcon className="h-4 w-4" />
+                            Background Image
+                          </Label>
+                          <input
+                            ref={editImageInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={(e) => handleImageUpload(e, true)}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => editImageInputRef.current?.click()}
+                            disabled={isUploadingImage}
+                            className="w-full"
+                          >
+                            {isUploadingImage ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-4 w-4 mr-2" />
+                                Change Image
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-2">
+                            <Music className="h-4 w-4" />
+                            Background Music
+                          </Label>
+                          <input
+                            ref={editAudioInputRef}
+                            type="file"
+                            accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg"
+                            onChange={(e) => handleAudioUpload(e, true)}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => editAudioInputRef.current?.click()}
+                            disabled={isUploadingAudio}
+                            className="w-full"
+                          >
+                            {isUploadingAudio ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-4 w-4 mr-2" />
+                                Change Audio
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* View Mode Content */
+                    <div className="space-y-6">
+                      <div className="flex flex-wrap gap-4 text-sm">
                         <div className="flex items-center gap-2">
-                          <Book className="h-4 w-4 text-primary" />
-                          <span>{selectedVision.scripture_reference}</span>
+                          <User className="h-4 w-4 text-primary" />
+                          <span>{selectedVision.dreamer_name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-primary" />
+                          <span>
+                            {new Date(selectedVision.date_received).toLocaleDateString(
+                              "en-US",
+                              { year: "numeric", month: "long", day: "numeric" }
+                            )}
+                          </span>
+                        </div>
+                        {selectedVision.scripture_reference && (
+                          <div className="flex items-center gap-2">
+                            <Book className="h-4 w-4 text-primary" />
+                            <span>{selectedVision.scripture_reference}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <h4 className="font-semibold mb-2 flex items-center gap-2">
+                          <Eye className="h-4 w-4 text-primary" />
+                          Description
+                        </h4>
+                        <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                          {selectedVision.description}
+                        </p>
+                      </div>
+
+                      {selectedVision.reflection_notes && (
+                        <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
+                          <h4 className="font-semibold mb-2 flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-primary" />
+                            Reflection Notes
+                          </h4>
+                          <p className="text-muted-foreground whitespace-pre-wrap">
+                            {selectedVision.reflection_notes}
+                          </p>
                         </div>
                       )}
                     </div>
-
-                    <div>
-                      <h4 className="font-semibold mb-2 flex items-center gap-2">
-                        <Eye className="h-4 w-4 text-primary" />
-                        Description
-                      </h4>
-                      <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                        {selectedVision.description}
-                      </p>
-                    </div>
-
-                    {selectedVision.reflection_notes && (
-                      <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
-                        <h4 className="font-semibold mb-2 flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-primary" />
-                          Reflection Notes
-                        </h4>
-                        <p className="text-muted-foreground whitespace-pre-wrap">
-                          {selectedVision.reflection_notes}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
             )}

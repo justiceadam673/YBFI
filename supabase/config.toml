@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.suggest-scripture]
 verify_jwt = false
+
+[functions.gospel-buddy]
+verify_jwt = false
