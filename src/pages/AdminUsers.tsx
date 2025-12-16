@@ -258,15 +258,15 @@ const AdminUsers = () => {
 
   if (!isPasswordVerified) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-primary/5">
         <Navbar />
         <main className="flex-1 flex items-center justify-center p-6">
-          <Card className="w-full max-w-md shadow-elevated">
+          <Card className="w-full max-w-md glass border-primary/20 animate-fade-in">
             <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                <Shield className="h-6 w-6 text-primary" />
+              <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-2xl flex items-center justify-center mb-4 border border-primary/30">
+                <Shield className="h-8 w-8 text-primary" />
               </div>
-              <CardTitle className="font-display text-2xl">Admin Access</CardTitle>
+              <CardTitle className="font-display text-2xl bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">Admin Access</CardTitle>
               <CardDescription>Enter the admin password to manage users</CardDescription>
             </CardHeader>
             <CardContent>
@@ -277,8 +277,9 @@ const AdminUsers = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && verifyPassword()}
+                  className="bg-background/50"
                 />
-                <Button className="w-full" disabled={verifying}>
+                <Button className="w-full bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90" disabled={verifying}>
                   {verifying ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   Verify Access
                 </Button>
@@ -292,66 +293,88 @@ const AdminUsers = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-primary/5">
       <Navbar />
       
+      {/* Hero Section */}
+      <section className="relative overflow-hidden border-b">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-purple-500/5 to-indigo-500/10" />
+        <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(circle at 25px 25px, hsl(var(--primary) / 0.1) 2px, transparent 0)', backgroundSize: '50px 50px' }} />
+        
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 animate-fade-in">
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/20 to-purple-500/20 border border-primary/30">
+                  <Users className="h-8 w-8 text-primary" />
+                </div>
+                <h1 className="text-3xl md:text-4xl font-display font-bold bg-gradient-to-r from-primary via-purple-500 to-indigo-500 bg-clip-text text-transparent">
+                  User Management
+                </h1>
+              </div>
+              <p className="text-muted-foreground max-w-lg">
+                View and manage all registered users, assign admin roles, and export user data
+              </p>
+            </div>
+            <Button variant="outline" onClick={exportUsers} className="gap-2 glass border-primary/20 hover:border-primary/40">
+              <Download className="h-4 w-4" />
+              Export Users
+            </Button>
+          </div>
+        </div>
+      </section>
+
       <main className="flex-1 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="mb-8 animate-fade-in">
-            <h1 className="text-3xl md:text-4xl font-display font-bold mb-2">User Management</h1>
-            <p className="text-muted-foreground">View and manage all registered users</p>
-          </div>
-
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <Card className="hover-lift transition-smooth">
-              <CardContent className="pt-6">
+            <Card className="glass border-primary/20 hover:border-primary/40 transition-all duration-300 hover:scale-105 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Users</p>
-                    <p className="text-2xl font-bold">{stats.total}</p>
+                    <p className="text-xs text-muted-foreground font-medium">Total Users</p>
+                    <p className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">{stats.total}</p>
                   </div>
-                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20">
                     <Users className="h-5 w-5 text-primary" />
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card className="hover-lift transition-smooth">
-              <CardContent className="pt-6">
+            <Card className="glass border-amber-500/20 hover:border-amber-500/40 transition-all duration-300 hover:scale-105 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Admins</p>
-                    <p className="text-2xl font-bold">{stats.admins}</p>
+                    <p className="text-xs text-muted-foreground font-medium">Admins</p>
+                    <p className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-yellow-500 bg-clip-text text-transparent">{stats.admins}</p>
                   </div>
-                  <div className="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center">
-                    <Crown className="h-5 w-5 text-accent" />
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-500/20 to-yellow-500/10 border border-amber-500/20">
+                    <Crown className="h-5 w-5 text-amber-500" />
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card className="hover-lift transition-smooth">
-              <CardContent className="pt-6">
+            <Card className="glass border-green-500/20 hover:border-green-500/40 transition-all duration-300 hover:scale-105 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">New This Week</p>
-                    <p className="text-2xl font-bold">{stats.newThisWeek}</p>
+                    <p className="text-xs text-muted-foreground font-medium">New This Week</p>
+                    <p className="text-3xl font-bold bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">{stats.newThisWeek}</p>
                   </div>
-                  <div className="w-10 h-10 bg-green-500/10 rounded-full flex items-center justify-center">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/10 border border-green-500/20">
                     <TrendingUp className="h-5 w-5 text-green-500" />
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card className="hover-lift transition-smooth">
-              <CardContent className="pt-6">
+            <Card className="glass border-blue-500/20 hover:border-blue-500/40 transition-all duration-300 hover:scale-105 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Active Today</p>
-                    <p className="text-2xl font-bold">{stats.activeToday}</p>
+                    <p className="text-xs text-muted-foreground font-medium">Active Today</p>
+                    <p className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent">{stats.activeToday}</p>
                   </div>
-                  <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/10 border border-blue-500/20">
                     <Clock className="h-5 w-5 text-blue-500" />
                   </div>
                 </div>
@@ -360,7 +383,7 @@ const AdminUsers = () => {
           </div>
 
           {/* Filters */}
-          <Card className="mb-6 shadow-soft">
+          <Card className="mb-6 glass border-primary/10 animate-fade-in" style={{ animationDelay: '0.5s' }}>
             <CardContent className="pt-6">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="relative flex-1">
@@ -369,11 +392,11 @@ const AdminUsers = () => {
                     placeholder="Search by name, location, or bio..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 bg-background/50"
                   />
                 </div>
                 <Select value={roleFilter} onValueChange={(v: 'all' | 'admin' | 'user') => setRoleFilter(v)}>
-                  <SelectTrigger className="w-full md:w-40">
+                  <SelectTrigger className="w-full md:w-40 bg-background/50">
                     <SelectValue placeholder="Filter by role" />
                   </SelectTrigger>
                   <SelectContent>
@@ -382,25 +405,24 @@ const AdminUsers = () => {
                     <SelectItem value="user">Users Only</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button variant="outline" onClick={exportUsers}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export
-                </Button>
               </div>
             </CardContent>
           </Card>
 
           {/* Users Table */}
-          <Card className="shadow-soft">
+          <Card className="glass border-primary/10 animate-fade-in" style={{ animationDelay: '0.6s' }}>
             <CardContent className="p-0">
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : filteredUsers.length === 0 ? (
-                <div className="text-center py-12">
-                  <Users className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-                  <p className="text-muted-foreground">No users found</p>
+                <div className="text-center py-16">
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/10 to-purple-500/10 w-fit mx-auto mb-4 border border-primary/20">
+                    <Users className="h-12 w-12 text-primary/50" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">No users found</h3>
+                  <p className="text-muted-foreground text-sm">Try adjusting your search or filter criteria</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">

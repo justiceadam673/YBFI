@@ -923,16 +923,51 @@ const VisionsDreams = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-20">
-            <Sparkles className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No visions or dreams yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Start recording the revelations God has given you
+          <div className="text-center py-20 animate-fade-in">
+            <div className="relative inline-block mb-8">
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-primary/20 to-indigo-500/20 rounded-full blur-3xl" />
+              <div className="relative flex items-center justify-center gap-4">
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/20 animate-bounce" style={{ animationDelay: '0s', animationDuration: '3s' }}>
+                  <Moon className="h-10 w-10 text-blue-400" />
+                </div>
+                <div className="p-5 rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-600/10 border border-purple-500/20 animate-bounce" style={{ animationDelay: '0.5s', animationDuration: '3s' }}>
+                  <Sparkles className="h-12 w-12 text-purple-400" />
+                </div>
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-yellow-500/20 to-amber-600/10 border border-yellow-500/20 animate-bounce" style={{ animationDelay: '1s', animationDuration: '3s' }}>
+                  <Sun className="h-10 w-10 text-yellow-400" />
+                </div>
+              </div>
+            </div>
+            <h3 className="text-2xl md:text-3xl font-bold mb-3 bg-gradient-to-r from-purple-400 via-primary to-indigo-400 bg-clip-text text-transparent">
+              No visions or dreams yet
+            </h3>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+              This sacred space awaits your first revelation. Start recording the dreams and visions God has given you.
             </p>
-            <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Record Your First Vision/Dream
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button 
+                onClick={() => setIsAddDialogOpen(true)} 
+                className="gap-2 bg-gradient-to-r from-purple-600 to-primary hover:from-purple-700 hover:to-primary/90 shadow-lg shadow-primary/25"
+                size="lg"
+              >
+                <Plus className="h-5 w-5" />
+                Record Your First Vision/Dream
+              </Button>
+            </div>
+            <div className="mt-8 flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full glass">
+                <Book className="h-3 w-3 text-primary" />
+                <span>AI Scripture Suggestions</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full glass">
+                <Music className="h-3 w-3 text-purple-400" />
+                <span>Background Music</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full glass">
+                <ImageIcon className="h-3 w-3 text-blue-400" />
+                <span>Visual Backgrounds</span>
+              </div>
+            </div>
           </div>
         )}
 
