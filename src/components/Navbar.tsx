@@ -190,6 +190,7 @@ const Navbar = () => {
 
           <div className="flex items-center gap-2 lg:hidden">
             <ThemeToggle />
+            <UserAvatar />
             <button
               className='p-2 rounded-lg hover:bg-muted transition-smooth'
               onClick={() => setIsOpen(!isOpen)}
