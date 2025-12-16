@@ -1,21 +1,30 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Send, Heart, MapPin, Phone, Mail, ExternalLink } from "lucide-react";
+import { Send, Heart, MapPin, Phone, Mail, ExternalLink, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import logo from "@/assets/ybf-logo.jpeg";
 
 const Footer = () => {
+  const { user, profile } = useAuth();
   const [name, setName] = useState("");
   const [testimony, setTestimony] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const getUserDisplayName = () => {
+    if (profile?.display_name) return profile.display_name;
+    if (user?.email) return user.email.split('@')[0];
+    return "";
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !testimony.trim()) {
+    const submitterName = user ? getUserDisplayName() : name.trim();
+    if (!submitterName || !testimony.trim()) {
       toast({
         title: "Please fill in all fields",
         variant: "destructive",
@@ -29,7 +38,7 @@ const Footer = () => {
       .from('testimonies')
       .insert([
         {
-          name: name.trim(),
+          name: submitterName,
           testimony: testimony.trim(),
           approved: true,
         }
@@ -152,12 +161,19 @@ const Footer = () => {
               Share Your Testimony
             </h4>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <Input
-                placeholder="Your Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="bg-background/10 border-background/20 text-background placeholder:text-background/50 focus:border-accent"
-              />
+              {user ? (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-background/10 border border-background/20">
+                  <User className="w-4 h-4 text-accent" />
+                  <span className="text-sm text-background/80">Sharing as <strong className="text-background">{getUserDisplayName()}</strong></span>
+                </div>
+              ) : (
+                <Input
+                  placeholder="Your Name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="bg-background/10 border-background/20 text-background placeholder:text-background/50 focus:border-accent"
+                />
+              )}
               <Textarea
                 placeholder="Share your testimony..."
                 value={testimony}

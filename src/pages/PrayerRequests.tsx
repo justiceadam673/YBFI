@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Heart, Plus, Send, Users, Calendar, Sparkles } from "lucide-react";
+import { Heart, Plus, Send, Users, Calendar, Sparkles, User } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format, isToday, isThisWeek } from "date-fns";
@@ -26,6 +27,7 @@ interface PrayerRequest {
 type DateFilter = "all" | "today" | "week";
 
 const PrayerRequests = () => {
+  const { user, profile } = useAuth();
   const [name, setName] = useState("");
   const [prayer, setPrayer] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -33,6 +35,12 @@ const PrayerRequests = () => {
   const [prayedFor, setPrayedFor] = useState<Set<string>>(new Set());
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const queryClient = useQueryClient();
+
+  const getUserDisplayName = () => {
+    if (profile?.display_name) return profile.display_name;
+    if (user?.email) return user.email.split('@')[0];
+    return "";
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem("ybf_prayed_for");
@@ -83,8 +91,9 @@ const PrayerRequests = () => {
 
   const submitMutation = useMutation({
     mutationFn: async () => {
+      const submitterName = isAnonymous ? "Anonymous" : (user ? getUserDisplayName() : name.trim());
       const { error } = await supabase.from("prayer_requests").insert({
-        name: isAnonymous ? "Anonymous" : name.trim(),
+        name: submitterName,
         prayer: prayer.trim(),
         is_anonymous: isAnonymous,
       });
@@ -130,7 +139,8 @@ const PrayerRequests = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isAnonymous && !name.trim()) {
+    const submitterName = user ? getUserDisplayName() : name.trim();
+    if (!isAnonymous && !submitterName) {
       toast.error("Please enter your name or choose anonymous");
       return;
     }
@@ -208,12 +218,19 @@ const PrayerRequests = () => {
                       </label>
                     </div>
                     {!isAnonymous && (
-                      <Input
-                        placeholder="Your name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="border-border/50 focus:border-primary"
-                      />
+                      user ? (
+                        <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                          <User className="w-4 h-4 text-primary" />
+                          <span className="text-sm">Submitting as <strong>{getUserDisplayName()}</strong></span>
+                        </div>
+                      ) : (
+                        <Input
+                          placeholder="Your name"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          className="border-border/50 focus:border-primary"
+                        />
+                      )
                     )}
                     <Textarea
                       placeholder="Share your prayer request..."

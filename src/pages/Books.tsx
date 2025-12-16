@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Download, BookOpen, Upload, MessageSquare, Star, Sparkles, Library } from "lucide-react";
+import { Download, BookOpen, Upload, MessageSquare, Star, Sparkles, Library, User } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -28,6 +29,7 @@ interface Book {
 }
 
 const Books = () => {
+  const { user, profile } = useAuth();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -44,6 +46,12 @@ const Books = () => {
   const [reviewText, setReviewText] = useState("");
   const [reviewRating, setReviewRating] = useState(5);
   const queryClient = useQueryClient();
+
+  const getUserDisplayName = () => {
+    if (profile?.display_name) return profile.display_name;
+    if (user?.email) return user.email.split('@')[0];
+    return "";
+  };
 
   const { data: books, isLoading } = useQuery({
     queryKey: ["books"],
@@ -133,13 +141,14 @@ const Books = () => {
 
   const reviewMutation = useMutation({
     mutationFn: async () => {
-      if (!reviewingBook || !reviewName || !reviewText) {
+      const reviewerName = user ? getUserDisplayName() : reviewName;
+      if (!reviewingBook || !reviewerName || !reviewText) {
         throw new Error("Please fill in all fields");
       }
 
       const { error } = await supabase.from("book_reviews").insert({
         book_id: reviewingBook.id,
-        user_name: reviewName,
+        user_name: reviewerName,
         review: reviewText,
         rating: reviewRating,
       });
@@ -471,13 +480,20 @@ const Books = () => {
               <h3 className="font-semibold text-lg">Write a Review</h3>
               <div>
                 <Label htmlFor="reviewName">Your Name</Label>
-                <Input
-                  id="reviewName"
-                  value={reviewName}
-                  onChange={(e) => setReviewName(e.target.value)}
-                  placeholder="Enter your name"
-                  className="border-border/50"
-                />
+                {user ? (
+                  <div className="flex items-center gap-2 p-3 mt-2 rounded-lg bg-primary/5 border border-primary/20">
+                    <User className="w-4 h-4 text-primary" />
+                    <span className="text-sm">Reviewing as <strong>{getUserDisplayName()}</strong></span>
+                  </div>
+                ) : (
+                  <Input
+                    id="reviewName"
+                    value={reviewName}
+                    onChange={(e) => setReviewName(e.target.value)}
+                    placeholder="Enter your name"
+                    className="border-border/50"
+                  />
+                )}
               </div>
               <div>
                 <Label htmlFor="rating">Rating</Label>
@@ -516,7 +532,7 @@ const Books = () => {
               </div>
               <Button
                 onClick={() => reviewMutation.mutate()}
-                disabled={reviewMutation.isPending || !reviewName || !reviewText}
+                disabled={reviewMutation.isPending || (!user && !reviewName) || !reviewText}
                 className="w-full"
               >
                 {reviewMutation.isPending ? "Submitting..." : "Submit Review"}

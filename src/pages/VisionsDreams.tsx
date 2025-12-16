@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ type VisionDream = {
 };
 
 const VisionsDreams = () => {
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -74,6 +76,12 @@ const VisionsDreams = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+
+  const getUserDisplayName = () => {
+    if (profile?.display_name) return profile.display_name;
+    if (user?.email) return user.email.split('@')[0];
+    return "";
+  };
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -355,10 +363,19 @@ const VisionsDreams = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const dreamerName = user ? getUserDisplayName() : formData.dreamer_name;
+    if (!dreamerName) {
+      toast({
+        title: "Name required",
+        description: "Please enter your name or sign in.",
+        variant: "destructive",
+      });
+      return;
+    }
     addMutation.mutate({
       title: formData.title,
       description: formData.description,
-      dreamer_name: formData.dreamer_name,
+      dreamer_name: dreamerName,
       category: formData.category,
       status: formData.status,
       date_received: formData.date_received,
@@ -570,13 +587,20 @@ const VisionsDreams = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="dreamer_name">Dreamer/Visionary Name *</Label>
-                    <Input
-                      id="dreamer_name"
-                      value={formData.dreamer_name}
-                      onChange={(e) => setFormData({ ...formData, dreamer_name: e.target.value })}
-                      placeholder="Who received this?"
-                      required
-                    />
+                    {user ? (
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                        <User className="w-4 h-4 text-primary" />
+                        <span className="text-sm">Recording as <strong>{getUserDisplayName()}</strong></span>
+                      </div>
+                    ) : (
+                      <Input
+                        id="dreamer_name"
+                        value={formData.dreamer_name}
+                        onChange={(e) => setFormData({ ...formData, dreamer_name: e.target.value })}
+                        placeholder="Who received this?"
+                        required
+                      />
+                    )}
                   </div>
                 </div>
 

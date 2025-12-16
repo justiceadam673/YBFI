@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { HelpCircle, Send, Sparkles, MessageCircle } from "lucide-react";
+import { HelpCircle, Send, Sparkles, MessageCircle, User } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/accordion";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const faqs = [
   {
@@ -39,14 +40,24 @@ const faqs = [
 ];
 
 const QA = () => {
+  const { user, profile } = useAuth();
   const [question, setQuestion] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const getUserDisplayName = () => {
+    if (profile?.display_name) return profile.display_name;
+    if (user?.email) return user.email.split('@')[0];
+    return "";
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim() || !question.trim()) {
+    const submitterName = user ? getUserDisplayName() : name.trim();
+    const submitterEmail = user?.email || email.trim();
+    
+    if (!submitterName || !submitterEmail || !question.trim()) {
       toast({
         title: "Please fill in all fields",
         variant: "destructive",
@@ -59,8 +70,8 @@ const QA = () => {
       .from('questions')
       .insert([
         {
-          name: name.trim(),
-          email: email.trim(),
+          name: submitterName,
+          email: submitterEmail,
           question: question.trim(),
         }
       ]);
@@ -157,21 +168,28 @@ const QA = () => {
                 </div>
                 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                      placeholder="Your Name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="border-border/50 focus:border-primary"
-                    />
-                    <Input
-                      type="email"
-                      placeholder="Your Email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="border-border/50 focus:border-primary"
-                    />
-                  </div>
+                  {user ? (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                      <User className="w-4 h-4 text-primary" />
+                      <span className="text-sm">Asking as <strong>{getUserDisplayName()}</strong> ({user.email})</span>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Input
+                        placeholder="Your Name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="border-border/50 focus:border-primary"
+                      />
+                      <Input
+                        type="email"
+                        placeholder="Your Email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="border-border/50 focus:border-primary"
+                      />
+                    </div>
+                  )}
                   <Textarea
                     placeholder="Your Question"
                     rows={4}
