@@ -56,6 +56,32 @@ const Blog = () => {
     return "";
   };
 
+  // Generate initials from name
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Generate consistent color based on name
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      'from-primary to-primary/70',
+      'from-accent to-accent/70',
+      'from-blue-500 to-blue-400',
+      'from-purple-500 to-purple-400',
+      'from-pink-500 to-pink-400',
+      'from-indigo-500 to-indigo-400',
+      'from-teal-500 to-teal-400',
+      'from-orange-500 to-orange-400',
+    ];
+    const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[index % colors.length];
+  };
+
   useEffect(() => {
     fetchPosts();
   }, []);
@@ -391,26 +417,35 @@ const Blog = () => {
                       className="border-b border-border/50 pb-4 last:border-0 animate-fade-in"
                       style={{ animationDelay: `${index * 0.1}s` }}
                     >
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          <User className="w-4 h-4 text-primary" />
+                      <div className="flex items-start gap-3 mb-2">
+                        <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getAvatarColor(comment.name)} flex items-center justify-center flex-shrink-0 shadow-md`}>
+                          <span className="text-white font-semibold text-sm">{getInitials(comment.name)}</span>
                         </div>
-                        <div>
-                          <p className="font-semibold text-sm">{comment.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(comment.created_at), "PPP")}
-                          </p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-sm truncate">{comment.name}</p>
+                            <span className="text-xs text-muted-foreground">•</span>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(comment.created_at), "PPP")}
+                            </p>
+                          </div>
+                          <p className="text-foreground/80 mt-1">{comment.comment}</p>
                         </div>
                       </div>
-                      <p className="text-foreground/80 ml-10">{comment.comment}</p>
                     </div>
                   ))}
                   
                   <div className="space-y-4 mt-8 pt-6 border-t border-border/50">
                     <h3 className="font-semibold text-lg">Add a Comment</h3>
                     {user ? (
-                      <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
-                        <User className="w-4 h-4 text-primary" />
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                        {profile?.avatar_url ? (
+                          <img src={profile.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                        ) : (
+                          <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${getAvatarColor(getUserDisplayName())} flex items-center justify-center shadow-sm`}>
+                            <span className="text-white font-semibold text-xs">{getInitials(getUserDisplayName())}</span>
+                          </div>
+                        )}
                         <span className="text-sm">Commenting as <strong>{getUserDisplayName()}</strong></span>
                       </div>
                     ) : (

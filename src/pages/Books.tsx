@@ -53,6 +53,32 @@ const Books = () => {
     return "";
   };
 
+  // Generate initials from name
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Generate consistent color based on name
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      'from-primary to-primary/70',
+      'from-accent to-accent/70',
+      'from-blue-500 to-blue-400',
+      'from-purple-500 to-purple-400',
+      'from-pink-500 to-pink-400',
+      'from-indigo-500 to-indigo-400',
+      'from-teal-500 to-teal-400',
+      'from-orange-500 to-orange-400',
+    ];
+    const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[index % colors.length];
+  };
+
   const { data: books, isLoading } = useQuery({
     queryKey: ["books"],
     queryFn: async () => {
@@ -481,8 +507,14 @@ const Books = () => {
               <div>
                 <Label htmlFor="reviewName">Your Name</Label>
                 {user ? (
-                  <div className="flex items-center gap-2 p-3 mt-2 rounded-lg bg-primary/5 border border-primary/20">
-                    <User className="w-4 h-4 text-primary" />
+                  <div className="flex items-center gap-3 p-3 mt-2 rounded-lg bg-primary/5 border border-primary/20">
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                    ) : (
+                      <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${getAvatarColor(getUserDisplayName())} flex items-center justify-center shadow-sm`}>
+                        <span className="text-white font-semibold text-xs">{getInitials(getUserDisplayName())}</span>
+                      </div>
+                    )}
                     <span className="text-sm">Reviewing as <strong>{getUserDisplayName()}</strong></span>
                   </div>
                 ) : (
@@ -545,27 +577,38 @@ const Books = () => {
                 All Reviews {reviews && reviews.length > 0 && `(${reviews.length})`}
               </h3>
               {reviews && reviews.length > 0 ? (
-                reviews.map((review: any) => (
-                  <div key={review.id} className="border border-border/50 rounded-xl p-4 space-y-2 hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{review.user_name}</span>
-                      <div className="flex gap-0.5">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star
-                            key={star}
-                            className={`h-4 w-4 ${
-                              star <= (review.rating || 0)
-                                ? "fill-accent text-accent"
-                                : "text-muted-foreground/30"
-                            }`}
-                          />
-                        ))}
+                reviews.map((review: any, index: number) => (
+                  <div 
+                    key={review.id} 
+                    className="border border-border/50 rounded-xl p-4 hover:shadow-md transition-shadow animate-fade-in"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getAvatarColor(review.user_name)} flex items-center justify-center flex-shrink-0 shadow-md`}>
+                        <span className="text-white font-semibold text-sm">{getInitials(review.user_name)}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="font-medium truncate">{review.user_name}</span>
+                          <div className="flex gap-0.5 flex-shrink-0">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                className={`h-4 w-4 ${
+                                  star <= (review.rating || 0)
+                                    ? "fill-accent text-accent"
+                                    : "text-muted-foreground/30"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-foreground/80 text-sm">{review.review}</p>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {new Date(review.created_at).toLocaleDateString()}
+                        </p>
                       </div>
                     </div>
-                    <p className="text-foreground/80">{review.review}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(review.created_at).toLocaleDateString()}
-                    </p>
                   </div>
                 ))
               ) : (

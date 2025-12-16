@@ -52,6 +52,32 @@ const QA = () => {
     return "";
   };
 
+  // Generate initials from name
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Generate consistent color based on name
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      'from-primary to-primary/70',
+      'from-accent to-accent/70',
+      'from-blue-500 to-blue-400',
+      'from-purple-500 to-purple-400',
+      'from-pink-500 to-pink-400',
+      'from-indigo-500 to-indigo-400',
+      'from-teal-500 to-teal-400',
+      'from-orange-500 to-orange-400',
+    ];
+    const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[index % colors.length];
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const submitterName = user ? getUserDisplayName() : name.trim();
@@ -169,8 +195,14 @@ const QA = () => {
                 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {user ? (
-                    <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
-                      <User className="w-4 h-4 text-primary" />
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                      {profile?.avatar_url ? (
+                        <img src={profile.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                      ) : (
+                        <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${getAvatarColor(getUserDisplayName())} flex items-center justify-center shadow-sm`}>
+                          <span className="text-white font-semibold text-xs">{getInitials(getUserDisplayName())}</span>
+                        </div>
+                      )}
                       <span className="text-sm">Asking as <strong>{getUserDisplayName()}</strong> ({user.email})</span>
                     </div>
                   ) : (
