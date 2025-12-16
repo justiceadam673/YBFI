@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, ChevronDown, Bot, Download, Heart, Users } from "lucide-react";
+import { Menu, X, ChevronDown, Bot, Download, Heart, Users, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -28,6 +28,7 @@ const Navbar = () => {
     { name: "Prayer Requests", path: "/prayer-requests" },
     { name: "GospelBuddy.AI", path: "/gospel-buddy" },
     { name: "Install App", path: "/install" },
+    { name: "Profile", path: "/profile" },
     { name: "Support", path: "/partner" },
     { name: "Admin Q&A", path: "/admin-qa" },
     { name: "Admin News", path: "/admin-announcements" },
@@ -234,6 +235,7 @@ const Navbar = () => {
                     {link.name === "GospelBuddy.AI" && <Bot className="h-4 w-4 mr-2 text-primary" />}
                     {link.name === "Install App" && <Download className="h-4 w-4 mr-2 text-green-500" />}
                     {link.name === "Prayer Requests" && <Heart className="h-4 w-4 mr-2 text-red-500" />}
+                    {link.name === "Profile" && <User className="h-4 w-4 mr-2 text-primary" />}
                     {link.name}
                   </Button>
                 </Link>

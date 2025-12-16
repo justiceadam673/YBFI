@@ -469,20 +469,51 @@ const VisionsDreams = () => {
       <Navbar />
       <audio ref={audioRef} loop />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Sparkles className="h-8 w-8 text-primary animate-pulse" />
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent">
-              Visions & Dreams
+      {/* Hero Section */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 via-primary/10 to-indigo-600/20" />
+        <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(circle at 25px 25px, hsl(var(--primary) / 0.1) 2px, transparent 0)', backgroundSize: '50px 50px' }} />
+        
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+          <div className="text-center animate-fade-in">
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/30">
+                <Moon className="h-8 w-8 text-purple-400" />
+              </div>
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-500/30">
+                <Sparkles className="h-8 w-8 text-yellow-400 animate-pulse" />
+              </div>
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30">
+                <Sun className="h-8 w-8 text-blue-400" />
+              </div>
+            </div>
+            <h1 className="text-4xl md:text-6xl font-bold mb-4">
+              <span className="bg-gradient-to-r from-purple-400 via-primary to-indigo-400 bg-clip-text text-transparent">
+                Visions & Dreams
+              </span>
             </h1>
-            <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+              A sacred space to record and reflect on the revelations God has given us through dreams and visions
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-3 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full glass">
+                <Book className="h-4 w-4 text-primary" />
+                <span>AI Scripture Suggestions</span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full glass">
+                <Music className="h-4 w-4 text-purple-400" />
+                <span>Background Music</span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full glass">
+                <ImageIcon className="h-4 w-4 text-blue-400" />
+                <span>Visual Backgrounds</span>
+              </div>
+            </div>
           </div>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            A sacred space to record and reflect on the revelations God has given us
-          </p>
         </div>
+      </section>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 
         {/* Filters and Add Button */}
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-center mb-8">
@@ -770,40 +801,48 @@ const VisionsDreams = () => {
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
+          <Card className="glass border-blue-500/20 hover:border-blue-500/40 transition-all duration-300 hover:scale-105 animate-fade-in" style={{ animationDelay: '0.1s' }}>
             <CardContent className="p-4 text-center">
-              <Moon className="h-6 w-6 mx-auto mb-2 text-blue-400" />
-              <p className="text-2xl font-bold text-blue-400">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 w-fit mx-auto mb-2">
+                <Moon className="h-6 w-6 text-blue-400" />
+              </div>
+              <p className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
                 {visionsDreams?.filter((v) => v.category === "dream").length || 0}
               </p>
-              <p className="text-xs text-muted-foreground">Dreams</p>
+              <p className="text-xs text-muted-foreground font-medium">Dreams</p>
             </CardContent>
           </Card>
-          <Card className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 border-yellow-500/20">
+          <Card className="glass border-yellow-500/20 hover:border-yellow-500/40 transition-all duration-300 hover:scale-105 animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <CardContent className="p-4 text-center">
-              <Sun className="h-6 w-6 mx-auto mb-2 text-yellow-400" />
-              <p className="text-2xl font-bold text-yellow-400">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-yellow-500/20 to-amber-600/10 w-fit mx-auto mb-2">
+                <Sun className="h-6 w-6 text-yellow-400" />
+              </div>
+              <p className="text-3xl font-bold bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">
                 {visionsDreams?.filter((v) => v.category === "vision").length || 0}
               </p>
-              <p className="text-xs text-muted-foreground">Visions</p>
+              <p className="text-xs text-muted-foreground font-medium">Visions</p>
             </CardContent>
           </Card>
-          <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
+          <Card className="glass border-green-500/20 hover:border-green-500/40 transition-all duration-300 hover:scale-105 animate-fade-in" style={{ animationDelay: '0.3s' }}>
             <CardContent className="p-4 text-center">
-              <CheckCircle2 className="h-6 w-6 mx-auto mb-2 text-green-400" />
-              <p className="text-2xl font-bold text-green-400">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-600/10 w-fit mx-auto mb-2">
+                <CheckCircle2 className="h-6 w-6 text-green-400" />
+              </div>
+              <p className="text-3xl font-bold bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">
                 {visionsDreams?.filter((v) => v.status === "fulfilled").length || 0}
               </p>
-              <p className="text-xs text-muted-foreground">Fulfilled</p>
+              <p className="text-xs text-muted-foreground font-medium">Fulfilled</p>
             </CardContent>
           </Card>
-          <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/20">
+          <Card className="glass border-purple-500/20 hover:border-purple-500/40 transition-all duration-300 hover:scale-105 animate-fade-in" style={{ animationDelay: '0.4s' }}>
             <CardContent className="p-4 text-center">
-              <Clock className="h-6 w-6 mx-auto mb-2 text-purple-400" />
-              <p className="text-2xl font-bold text-purple-400">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-600/10 w-fit mx-auto mb-2">
+                <Clock className="h-6 w-6 text-purple-400" />
+              </div>
+              <p className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-indigo-500 bg-clip-text text-transparent">
                 {visionsDreams?.filter((v) => v.status === "waiting" || v.status === "in_progress").length || 0}
               </p>
-              <p className="text-xs text-muted-foreground">Awaiting</p>
+              <p className="text-xs text-muted-foreground font-medium">Awaiting</p>
             </CardContent>
           </Card>
         </div>
@@ -815,65 +854,68 @@ const VisionsDreams = () => {
           </div>
         ) : filteredVisions && filteredVisions.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredVisions.map((vision) => (
+            {filteredVisions.map((vision, index) => (
               <Card
                 key={vision.id}
-                className="group cursor-pointer hover:shadow-xl transition-all duration-300 overflow-hidden border-primary/10 hover:border-primary/30"
+                className="group cursor-pointer glass hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 overflow-hidden border-primary/10 hover:border-primary/30 animate-fade-in hover:-translate-y-1"
+                style={{ animationDelay: `${index * 0.1}s` }}
                 onClick={() => openVisionDialog(vision)}
               >
-                <div className="relative h-40 overflow-hidden">
+                <div className="relative h-48 overflow-hidden">
                   {vision.background_image_url ? (
                     <img
                       src={vision.background_image_url}
                       alt={vision.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-primary/20 via-purple-500/20 to-blue-500/20 flex items-center justify-center">
+                    <div className="w-full h-full bg-gradient-to-br from-primary/30 via-purple-500/20 to-indigo-500/30 flex items-center justify-center">
                       {vision.category === "vision" ? (
-                        <Sun className="h-16 w-16 text-primary/40" />
+                        <Sun className="h-20 w-20 text-yellow-400/50 group-hover:text-yellow-400/70 transition-colors duration-300" />
                       ) : (
-                        <Moon className="h-16 w-16 text-primary/40" />
+                        <Moon className="h-20 w-20 text-blue-400/50 group-hover:text-blue-400/70 transition-colors duration-300" />
                       )}
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
                   <div className="absolute top-3 left-3 flex gap-2">
-                    <Badge variant="secondary" className="gap-1">
+                    <Badge variant="secondary" className="gap-1 glass backdrop-blur-md">
                       {getCategoryIcon(vision.category)}
                       {vision.category}
                     </Badge>
                     {vision.audio_url && (
-                      <Badge variant="secondary" className="gap-1">
-                        <Music className="h-3 w-3" />
+                      <Badge variant="secondary" className="gap-1 glass backdrop-blur-md">
+                        <Music className="h-3 w-3 text-purple-400" />
                       </Badge>
                     )}
                   </div>
-                  <Badge className={`absolute top-3 right-3 ${getStatusColor(vision.status)}`}>
+                  <Badge className={`absolute top-3 right-3 backdrop-blur-md ${getStatusColor(vision.status)}`}>
                     {vision.status.replace("_", " ")}
                   </Badge>
                 </div>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-lg mb-2 line-clamp-1 group-hover:text-primary transition-colors">
+                <CardContent className="p-5">
+                  <h3 className="font-bold text-lg mb-2 line-clamp-1 group-hover:text-primary transition-colors duration-300">
                     {vision.title}
                   </h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                  <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
                     {vision.description}
                   </p>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <User className="h-3 w-3" />
-                      {vision.dreamer_name}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border/50 pt-3">
+                    <div className="flex items-center gap-1.5">
+                      <div className="p-1 rounded-full bg-primary/10">
+                        <User className="h-3 w-3 text-primary" />
+                      </div>
+                      <span className="font-medium">{vision.dreamer_name}</span>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <Calendar className="h-3 w-3" />
                       {new Date(vision.date_received).toLocaleDateString()}
                     </div>
                   </div>
                   {vision.scripture_reference && (
-                    <div className="mt-2 flex items-center gap-1 text-xs text-primary">
-                      <Book className="h-3 w-3" />
-                      {vision.scripture_reference}
+                    <div className="mt-3 flex items-center gap-2 text-xs p-2 rounded-lg bg-primary/5 border border-primary/10">
+                      <Book className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-primary font-medium">{vision.scripture_reference}</span>
                     </div>
                   )}
                 </CardContent>
