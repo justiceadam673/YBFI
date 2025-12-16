@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ interface Comment {
 }
 
 const Blog = () => {
+  const { user, profile } = useAuth();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -46,6 +48,13 @@ const Blog = () => {
   const [newComment, setNewComment] = useState({ name: "", comment: "" });
   const [createPassword, setCreatePassword] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+  // Auto-fill user details when logged in
+  const getUserDisplayName = () => {
+    if (profile?.display_name) return profile.display_name;
+    if (user?.email) return user.email.split('@')[0];
+    return "";
+  };
 
   useEffect(() => {
     fetchPosts();
@@ -229,13 +238,14 @@ const Blog = () => {
   };
 
   const handleAddComment = async () => {
-    if (!selectedPost || !newComment.name || !newComment.comment) {
+    const commenterName = user ? getUserDisplayName() : newComment.name;
+    if (!selectedPost || !commenterName || !newComment.comment) {
       toast({ title: "Please fill all fields", variant: "destructive" });
       return;
     }
     const { error } = await supabase.from("blog_comments").insert({
       post_id: selectedPost.id,
-      name: newComment.name,
+      name: commenterName,
       comment: newComment.comment,
     });
     if (error) {
@@ -398,12 +408,19 @@ const Blog = () => {
                   
                   <div className="space-y-4 mt-8 pt-6 border-t border-border/50">
                     <h3 className="font-semibold text-lg">Add a Comment</h3>
-                    <Input
-                      placeholder="Your Name"
-                      value={newComment.name}
-                      onChange={(e) => setNewComment({ ...newComment, name: e.target.value })}
-                      className="border-border/50"
-                    />
+                    {user ? (
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                        <User className="w-4 h-4 text-primary" />
+                        <span className="text-sm">Commenting as <strong>{getUserDisplayName()}</strong></span>
+                      </div>
+                    ) : (
+                      <Input
+                        placeholder="Your Name"
+                        value={newComment.name}
+                        onChange={(e) => setNewComment({ ...newComment, name: e.target.value })}
+                        className="border-border/50"
+                      />
+                    )}
                     <Textarea
                       placeholder="Your Comment"
                       value={newComment.comment}
