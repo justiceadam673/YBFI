@@ -8,13 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, MapPin, Users, Plus, ClipboardList, Loader2, ImageIcon, Trash2 } from "lucide-react";
+import { Calendar, MapPin, Users, Plus, ClipboardList, Loader2, ImageIcon, Trash2, Copy, Mail } from "lucide-react";
 import { format } from "date-fns";
 
 interface Program {
@@ -57,6 +58,10 @@ const Registration = () => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [registrationCounts, setRegistrationCounts] = useState<Record<string, number>>({});
+  const [viewingProgram, setViewingProgram] = useState<Program | null>(null);
+  const [programRegistrations, setProgramRegistrations] = useState<Registration[]>([]);
+  const [loadingRegistrations, setLoadingRegistrations] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   // Add Program form state
   const [programForm, setProgramForm] = useState({
@@ -148,7 +153,53 @@ const Registration = () => {
     }
   };
 
-  const handleDeleteProgram = async (programId: string) => {
+  const fetchProgramRegistrations = async (programId: string) => {
+    setLoadingRegistrations(true);
+    const { data, error } = await supabase
+      .from("program_registrations")
+      .select("*")
+      .eq("program_id", programId)
+      .order("created_at", { ascending: true });
+    if (!error && data) setProgramRegistrations(data);
+    setLoadingRegistrations(false);
+  };
+
+  const handleViewProgram = (program: Program) => {
+    setViewingProgram(program);
+    setProgramRegistrations([]);
+    fetchProgramRegistrations(program.id);
+  };
+
+  const handleCopyRegistrations = async () => {
+    const header = "Name\tEmail\tPhone\tGender\tDenomination\tSpecial Request\tDate Registered";
+    const rows = programRegistrations.map(r =>
+      `${r.name}\t${r.email}\t${r.phone}\t${r.gender}\t${r.denomination || '-'}\t${r.special_request || '-'}\t${format(new Date(r.created_at), "MMM d, yyyy")}`
+    );
+    await navigator.clipboard.writeText([header, ...rows].join("\n"));
+    toast({ title: "Copied!", description: "Registration data copied to clipboard." });
+  };
+
+  const handleEmailRegistrations = async () => {
+    setSendingEmail(true);
+    try {
+      const { error } = await supabase.functions.invoke("send-notification", {
+        body: {
+          type: "registration_report",
+          to: "justiceadam673@gmail.com",
+          data: {
+            programTitle: viewingProgram?.title,
+            registrations: programRegistrations,
+          },
+        },
+      });
+      if (error) throw error;
+      toast({ title: "Email sent!", description: "Registration report sent to justiceadam673@gmail.com." });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to send email.", variant: "destructive" });
+    }
+    setSendingEmail(false);
+  };
+
     const { error } = await supabase.from("programs").delete().eq("id", programId);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -401,7 +452,7 @@ const Registration = () => {
                 ) : (
                   <div className="space-y-3">
                     {allPrograms.map((program) => (
-                      <Card key={program.id} className="glass-card">
+                      <Card key={program.id} className="glass-card cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => handleViewProgram(program)}>
                         <CardContent className="flex items-center justify-between p-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
@@ -430,7 +481,7 @@ const Registration = () => {
                           </div>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="destructive" size="icon" className="ml-3 shrink-0">
+                              <Button variant="destructive" size="icon" className="ml-3 shrink-0" onClick={(e) => e.stopPropagation()}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </AlertDialogTrigger>
@@ -503,6 +554,60 @@ const Registration = () => {
               {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Registering...</> : "Submit Registration"}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Registrations Viewer Dialog */}
+      <Dialog open={!!viewingProgram} onOpenChange={(open) => { if (!open) setViewingProgram(null); }}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{viewingProgram?.title} — Registrations ({programRegistrations.length})</DialogTitle>
+            <DialogDescription>View all registered participants for this program.</DialogDescription>
+          </DialogHeader>
+          {loadingRegistrations ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : programRegistrations.length === 0 ? (
+            <p className="text-center text-muted-foreground py-10">No registrations yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Gender</TableHead>
+                  <TableHead>Denomination</TableHead>
+                  <TableHead>Special Request</TableHead>
+                  <TableHead>Date</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {programRegistrations.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell>{r.name}</TableCell>
+                    <TableCell>{r.email}</TableCell>
+                    <TableCell>{r.phone}</TableCell>
+                    <TableCell className="capitalize">{r.gender}</TableCell>
+                    <TableCell>{r.denomination || "-"}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{r.special_request || "-"}</TableCell>
+                    <TableCell>{format(new Date(r.created_at), "MMM d, yyyy")}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+          {programRegistrations.length > 0 && (
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={handleCopyRegistrations} className="flex items-center gap-2">
+                <Copy className="h-4 w-4" /> Copy to Clipboard
+              </Button>
+              <Button onClick={handleEmailRegistrations} disabled={sendingEmail} className="flex items-center gap-2">
+                {sendingEmail ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending...</> : <><Mail className="h-4 w-4" /> Send to Email</>}
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
 

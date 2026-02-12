@@ -6,13 +6,23 @@ const corsHeaders = {
 };
 
 interface EmailRequest {
-  type: "welcome" | "admin_action";
+  type: "welcome" | "admin_action" | "registration_report";
   to: string;
   data: {
     userName?: string;
     actionType?: string;
     actionDetails?: string;
     performedBy?: string;
+    programTitle?: string;
+    registrations?: Array<{
+      name: string;
+      email: string;
+      phone: string;
+      gender: string;
+      denomination: string | null;
+      special_request: string | null;
+      created_at: string;
+    }>;
   };
 }
 
@@ -104,6 +114,59 @@ const handler = async (req: Request): Promise<Response> => {
                 <div class="action-details">${data.actionDetails || 'No additional details'}</div>
               </div>
               <p style="font-size: 14px; color: #94a3b8;">Performed by: ${data.performedBy || 'System'}<br>Time: ${new Date().toLocaleString()}</p>
+            </div>
+            <div class="footer">
+              © ${new Date().getFullYear()} Young Builders Foundation International
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+    } else if (type === "registration_report") {
+      const regs = data.registrations || [];
+      subject = `Registration Report: ${data.programTitle || "Program"}`;
+      const tableRows = regs.map((r: any) => `
+        <tr>
+          <td style="border:1px solid #e2e8f0;padding:8px;">${r.name}</td>
+          <td style="border:1px solid #e2e8f0;padding:8px;">${r.email}</td>
+          <td style="border:1px solid #e2e8f0;padding:8px;">${r.phone}</td>
+          <td style="border:1px solid #e2e8f0;padding:8px;">${r.gender}</td>
+          <td style="border:1px solid #e2e8f0;padding:8px;">${r.denomination || '-'}</td>
+          <td style="border:1px solid #e2e8f0;padding:8px;">${r.special_request || '-'}</td>
+          <td style="border:1px solid #e2e8f0;padding:8px;">${new Date(r.created_at).toLocaleDateString()}</td>
+        </tr>
+      `).join("");
+      html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background: #f8fafc; }
+            .container { max-width: 800px; margin: 40px auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); padding: 32px; text-align: center; }
+            .header h1 { color: white; margin: 0; font-size: 24px; }
+            .content { padding: 32px; }
+            table { width: 100%; border-collapse: collapse; font-size: 13px; }
+            th { background: #f1f5f9; border: 1px solid #e2e8f0; padding: 10px 8px; text-align: left; font-weight: 600; }
+            .footer { padding: 24px 32px; background: #f8fafc; text-align: center; color: #94a3b8; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>📋 ${data.programTitle} - Registrations (${regs.length})</h1>
+            </div>
+            <div class="content">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th><th>Email</th><th>Phone</th><th>Gender</th><th>Denomination</th><th>Special Request</th><th>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${tableRows || '<tr><td colspan="7" style="text-align:center;padding:20px;">No registrations yet.</td></tr>'}
+                </tbody>
+              </table>
             </div>
             <div class="footer">
               © ${new Date().getFullYear()} Young Builders Foundation International
