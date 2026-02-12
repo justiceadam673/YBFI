@@ -23,6 +23,7 @@ import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import InstallPrompt from "./components/InstallPrompt";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -34,23 +35,23 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/messages" element={<Messages />} />
-            <Route path="/gallery" element={<Gallery />} />
-            <Route path="/testimonies" element={<Testimonies />} />
-            <Route path="/qa" element={<QA />} />
-            <Route path="/blog" element={<Blog />} />
-            <Route path="/partner" element={<Partner />} />
-            <Route path="/books" element={<Books />} />
-            <Route path="/visions-dreams" element={<VisionsDreams />} />
-            <Route path="/gospel-buddy" element={<GospelBuddy />} />
-            <Route path="/prayer-requests" element={<PrayerRequests />} />
-            <Route path="/install" element={<InstallApp />} />
-            <Route path="/admin-qa" element={<AdminQA />} />
-            <Route path="/admin-announcements" element={<AdminAnnouncements />} />
-            <Route path="/admin-users" element={<AdminUsers />} />
+            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+            <Route path="/gallery" element={<ProtectedRoute><Gallery /></ProtectedRoute>} />
+            <Route path="/testimonies" element={<ProtectedRoute><Testimonies /></ProtectedRoute>} />
+            <Route path="/qa" element={<ProtectedRoute><QA /></ProtectedRoute>} />
+            <Route path="/blog" element={<ProtectedRoute><Blog /></ProtectedRoute>} />
+            <Route path="/partner" element={<ProtectedRoute><Partner /></ProtectedRoute>} />
+            <Route path="/books" element={<ProtectedRoute><Books /></ProtectedRoute>} />
+            <Route path="/visions-dreams" element={<ProtectedRoute><VisionsDreams /></ProtectedRoute>} />
+            <Route path="/gospel-buddy" element={<ProtectedRoute><GospelBuddy /></ProtectedRoute>} />
+            <Route path="/prayer-requests" element={<ProtectedRoute><PrayerRequests /></ProtectedRoute>} />
+            <Route path="/install" element={<ProtectedRoute><InstallApp /></ProtectedRoute>} />
+            <Route path="/admin-qa" element={<ProtectedRoute><AdminQA /></ProtectedRoute>} />
+            <Route path="/admin-announcements" element={<ProtectedRoute><AdminAnnouncements /></ProtectedRoute>} />
+            <Route path="/admin-users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <InstallPrompt />
