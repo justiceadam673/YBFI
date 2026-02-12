@@ -29,10 +29,10 @@ const Navbar = () => {
     { name: "GospelBuddy.AI", path: "/gospel-buddy" },
     { name: "Install App", path: "/install" },
     { name: "Profile", path: "/profile" },
+    { name: "Registration", path: "/registration" },
     { name: "Support", path: "/partner" },
     { name: "Admin Q&A", path: "/admin-qa" },
     { name: "Admin News", path: "/admin-announcements" },
-    { name: "Registration", path: "/registration" },
     {
       name: "WhatsApp",
       path: "https://chat.whatsapp.com/DzxsuHOQQpo6II0RK22VN0",
@@ -141,14 +141,27 @@ const Navbar = () => {
               </Button>
             </Link>
 
-            <Link to='/partner'>
-              <Button
-                variant={isActive("/partner") ? "default" : "ghost"}
-                className='transition-smooth'
-              >
-                Support
-              </Button>
-            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant='ghost' className='transition-smooth'>
+                  Programs & Support <ChevronDown className='ml-1 h-4 w-4' />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className='bg-background border shadow-lg'>
+                <DropdownMenuItem asChild>
+                  <Link to='/registration' className='w-full cursor-pointer flex items-center gap-2'>
+                    <ClipboardList className="h-4 w-4" />
+                    Registration
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to='/partner' className='w-full cursor-pointer flex items-center gap-2'>
+                    <Heart className="h-4 w-4" />
+                    Support
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -171,12 +184,6 @@ const Navbar = () => {
                   <Link to='/admin-users' className='w-full cursor-pointer flex items-center gap-2'>
                     <Users className="h-4 w-4" />
                     Manage Users
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to='/registration' className='w-full cursor-pointer flex items-center gap-2'>
-                    <ClipboardList className="h-4 w-4" />
-                    Registration
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
