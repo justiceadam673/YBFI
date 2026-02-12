@@ -1,48 +1,48 @@
 
 
-## View and Export Program Registrations
+## Registered Status and Email Reminders for Programs
 
-### What Will Change
+### 1. Show "Registered" button for already-registered users
 
-Each program card in the admin "Existing Programs" list will become clickable. Clicking it opens a dialog showing all registered participants in a table with their full details. Admins can then:
+**File: `src/pages/Registration.tsx`**
 
-1. **Copy to clipboard** -- copies the table data as tab-separated text (pasteable into Excel/Google Sheets)
-2. **Send to email** -- sends the registration data to justiceadam673@gmail.com via the existing email notification backend function
+- Add a new state `userRegistrations` (a `Set<string>` of program IDs the current user has registered for).
+- On page load, query `program_registrations` filtered by `user_id = user.id` to get all program IDs the user is registered for.
+- Update the realtime subscription to also refresh this set when `program_registrations` changes.
+- In the program card's Register button:
+  - If the user's program ID is in `userRegistrations`, show a disabled button with text **"Registered"** (green/success styling).
+  - Otherwise, keep the current "Register Now" / "Closed" / "Full" logic.
+- After a successful registration, immediately add the program ID to `userRegistrations` for instant UI feedback.
 
-### Detailed Changes
+### 2. Automated email reminders every 2 days until the program starts
 
-**`src/pages/Registration.tsx`**
+**New edge function: `supabase/functions/send-program-reminders/index.ts`**
 
-1. Add new state:
-   - `viewingProgram` (Program | null) -- the program whose registrations are being viewed
-   - `programRegistrations` (Registration[]) -- fetched registrations for that program
-   - `loadingRegistrations` (boolean)
-   - `sendingEmail` (boolean)
+- This function will be called on a schedule (via a cron job).
+- Logic:
+  1. Query all programs where `start_date > now()` and `is_active = true`.
+  2. For each program, query all registrations to get participant emails and names.
+  3. Send a reminder email to each registered user using the Resend API, including the program title, start date, and location.
+- The function uses the `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `RESEND_API_KEY` secrets (all already configured).
 
-2. Add `fetchProgramRegistrations(programId)` function:
-   - Queries `program_registrations` table filtered by `program_id`
-   - Stores result in `programRegistrations`
+**Schedule the cron job:**
 
-3. Make each program card in the "Existing Programs" list clickable:
-   - Clicking the card (not the delete button) opens a new Dialog
-   - Fetches registrations for that program on open
+- Use `pg_cron` and `pg_net` extensions to call the edge function every 2 days.
+- SQL to schedule: `cron.schedule('program-reminders', '0 8 */2 * *', ...)` -- runs at 8 AM every 2 days.
+- This will be set up via the SQL insert tool (not migration, since it contains project-specific URLs).
 
-4. Add a **Registrations Dialog** containing:
-   - Program title header
-   - A responsive table (using the existing Table UI components) with columns: Name, Email, Phone, Gender, Denomination, Special Request, Date Registered
-   - Two action buttons at the bottom:
-     - **Copy to Clipboard** -- converts registrations to tab-separated values and copies via `navigator.clipboard.writeText()`
-     - **Send to Email** -- calls the existing `send-notification` edge function with a new email type `registration_report`, sending the formatted data to justiceadam673@gmail.com
+**Update `supabase/config.toml`** to add the new function with `verify_jwt = false`.
 
-5. Import `Table, TableHeader, TableBody, TableRow, TableHead, TableCell` from UI components, plus `Copy, Mail` icons from lucide-react
+### Technical Details
 
-**`supabase/functions/send-notification/index.ts`**
+**Files to create:**
+- `supabase/functions/send-program-reminders/index.ts` -- new edge function for reminders
 
-Add a new email type `registration_report` to handle sending registration data:
-- Accepts `programTitle`, `registrations` array, and recipient email
-- Renders an HTML email with the registrations formatted as an HTML table
-- Sends via Resend API to justiceadam673@gmail.com
+**Files to modify:**
+- `src/pages/Registration.tsx` -- add `userRegistrations` state, fetch user's registrations, update button rendering
+- `supabase/config.toml` -- add `send-program-reminders` function config
 
-### RLS Note
-The existing RLS policy on `program_registrations` already allows admins to SELECT all registrations (`has_role(auth.uid(), 'admin')`), so no database changes are needed.
+**Database changes:**
+- Enable `pg_cron` and `pg_net` extensions
+- Create a cron job to invoke the reminder function every 2 days
 
