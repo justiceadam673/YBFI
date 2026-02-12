@@ -1,85 +1,40 @@
 
 
-## Plan: Program Registration System + Auth Redirect Fix
+## Navigation Restructure and Admin Program Management
 
-### 1. Auth Redirect (Already Done)
-The authentication wall is already in place from the previous implementation. The `ProtectedRoute` component wraps all routes except `/auth`, so visiting `ybfi.vercel.app` while logged out already redirects to the auth page. No changes needed here.
+### 1. Navbar Changes
 
-### 2. Database Setup
-Create two new tables:
+**Replace standalone "Support" button and "Registration" in Admin dropdown** with a new dropdown called **"Programs & Support"** containing:
+- Registration (link to `/registration` -- the user-facing program registration page)
+- Support (link to `/partner`)
 
-**`programs` table** - stores programs created by admins:
-- `id` (uuid, primary key)
-- `created_at` (timestamp)
-- `title` (text, required)
-- `description` (text)
-- `image_url` (text)
-- `start_date` (date) - program start
-- `end_date` (date) - program end
-- `registration_deadline` (date) - last day to register
-- `location` (text)
-- `max_participants` (integer)
-- `is_active` (boolean, default true)
-- `created_by` (uuid, references auth.users)
+**Remove "Registration" from the Admin dropdown** since it moves to the new dropdown.
 
-**`program_registrations` table** - stores user registrations:
-- `id` (uuid, primary key)
-- `created_at` (timestamp)
-- `program_id` (uuid, references programs)
-- `user_id` (uuid, references auth.users)
-- `name` (text, required)
-- `email` (text, required)
-- `phone` (text, required)
-- `gender` (text, required)
-- `denomination` (text)
-- `special_request` (text)
-- `status` (text, default 'registered')
+**Update mobile nav links** accordingly to reflect the same grouping.
 
-**Storage bucket**: `program-images` (public) for program images.
+### 2. Add Program List with Delete to Admin Tab
 
-**RLS Policies**:
-- Programs: anyone authenticated can SELECT; only admins can INSERT/UPDATE/DELETE (using `has_role` function)
-- Registrations: authenticated users can INSERT their own; admins can SELECT all; users can SELECT their own
-
-### 3. New Page: `src/pages/Registration.tsx`
-A dynamic page with two main sections accessed via tabs/buttons:
-
-**"Add Program" (Admin Only)**:
-- Protected by admin role check (using `isAdmin` from `useAuth`)
-- Form fields: title, description, image upload, start/end dates, registration deadline, location, max participants
-- Image uploaded to `program-images` storage bucket
-- Matching the elegant design system with glass cards, animations, hero section
-
-**"Register for a Program" (All Users)**:
-- Displays all active programs as beautiful cards with images, dates, and details
-- Click a program to open a registration dialog/form
-- Auto-fills name and email from user profile
-- Fields: name, email, phone, gender (select), denomination, special request
-- Shows registration deadline and remaining spots
-- Confirmation toast on successful registration
-
-### 4. Route and Navigation Updates
-
-**`src/App.tsx`**: Add new route `/registration` wrapped in `ProtectedRoute`
-
-**`src/components/Navbar.tsx`**:
-- Add "Registration" link under the Admin dropdown (desktop)
-- Add "Registration" link in mobile nav menu
+In `src/pages/Registration.tsx`, update the "Add Program" admin tab to show:
+- The existing "Create a New Program" form at the top
+- A new **"Existing Programs"** section below the form listing all programs (active or not) in a card/table layout
+- Each program card shows title, dates, location, registration count, and a **Delete** button
+- Delete button triggers a confirmation dialog, then calls `supabase.from("programs").delete().eq("id", programId)`
+- Programs refresh automatically via the existing realtime subscription
 
 ### Technical Details
 
-**Files to create:**
-- `src/pages/Registration.tsx` - main registration page
-
 **Files to modify:**
-- `src/App.tsx` - add route
-- `src/components/Navbar.tsx` - add nav links
 
-**Database migration:**
-- Create `programs` table with RLS
-- Create `program_registrations` table with RLS
-- Create `program-images` storage bucket
-- Enable realtime on both tables for live updates
+1. **`src/components/Navbar.tsx`**
+   - Remove the standalone `<Link to='/partner'>Support</Link>` button (lines 144-151)
+   - Remove "Registration" from Admin dropdown (lines 176-181)
+   - Add a new `<DropdownMenu>` between Q&A and Admin labeled "Programs & Support" with two items: "Registration" (`/registration`) and "Support" (`/partner`)
+   - Update `navLinks` array for mobile: remove standalone "Support" and "Registration" entries, or relabel for clarity
 
-**Design:** Hero section with gradient, glass cards for programs, animated transitions, responsive grid layout -- consistent with the existing elegant design system used across the site.
+2. **`src/pages/Registration.tsx`**
+   - Import `Trash2` icon from lucide-react and `AlertDialog` components
+   - Add `handleDeleteProgram(id)` function that deletes from `programs` table
+   - Add `allPrograms` state (fetches all programs regardless of `is_active` for admin view)
+   - In the "Add Program" tab content, add a section below the form showing all programs as cards with delete buttons
+   - Add a confirmation alert dialog before deletion
 
