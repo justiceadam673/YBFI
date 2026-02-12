@@ -1,40 +1,48 @@
 
 
-## Navigation Restructure and Admin Program Management
+## View and Export Program Registrations
 
-### 1. Navbar Changes
+### What Will Change
 
-**Replace standalone "Support" button and "Registration" in Admin dropdown** with a new dropdown called **"Programs & Support"** containing:
-- Registration (link to `/registration` -- the user-facing program registration page)
-- Support (link to `/partner`)
+Each program card in the admin "Existing Programs" list will become clickable. Clicking it opens a dialog showing all registered participants in a table with their full details. Admins can then:
 
-**Remove "Registration" from the Admin dropdown** since it moves to the new dropdown.
+1. **Copy to clipboard** -- copies the table data as tab-separated text (pasteable into Excel/Google Sheets)
+2. **Send to email** -- sends the registration data to justiceadam673@gmail.com via the existing email notification backend function
 
-**Update mobile nav links** accordingly to reflect the same grouping.
+### Detailed Changes
 
-### 2. Add Program List with Delete to Admin Tab
+**`src/pages/Registration.tsx`**
 
-In `src/pages/Registration.tsx`, update the "Add Program" admin tab to show:
-- The existing "Create a New Program" form at the top
-- A new **"Existing Programs"** section below the form listing all programs (active or not) in a card/table layout
-- Each program card shows title, dates, location, registration count, and a **Delete** button
-- Delete button triggers a confirmation dialog, then calls `supabase.from("programs").delete().eq("id", programId)`
-- Programs refresh automatically via the existing realtime subscription
+1. Add new state:
+   - `viewingProgram` (Program | null) -- the program whose registrations are being viewed
+   - `programRegistrations` (Registration[]) -- fetched registrations for that program
+   - `loadingRegistrations` (boolean)
+   - `sendingEmail` (boolean)
 
-### Technical Details
+2. Add `fetchProgramRegistrations(programId)` function:
+   - Queries `program_registrations` table filtered by `program_id`
+   - Stores result in `programRegistrations`
 
-**Files to modify:**
+3. Make each program card in the "Existing Programs" list clickable:
+   - Clicking the card (not the delete button) opens a new Dialog
+   - Fetches registrations for that program on open
 
-1. **`src/components/Navbar.tsx`**
-   - Remove the standalone `<Link to='/partner'>Support</Link>` button (lines 144-151)
-   - Remove "Registration" from Admin dropdown (lines 176-181)
-   - Add a new `<DropdownMenu>` between Q&A and Admin labeled "Programs & Support" with two items: "Registration" (`/registration`) and "Support" (`/partner`)
-   - Update `navLinks` array for mobile: remove standalone "Support" and "Registration" entries, or relabel for clarity
+4. Add a **Registrations Dialog** containing:
+   - Program title header
+   - A responsive table (using the existing Table UI components) with columns: Name, Email, Phone, Gender, Denomination, Special Request, Date Registered
+   - Two action buttons at the bottom:
+     - **Copy to Clipboard** -- converts registrations to tab-separated values and copies via `navigator.clipboard.writeText()`
+     - **Send to Email** -- calls the existing `send-notification` edge function with a new email type `registration_report`, sending the formatted data to justiceadam673@gmail.com
 
-2. **`src/pages/Registration.tsx`**
-   - Import `Trash2` icon from lucide-react and `AlertDialog` components
-   - Add `handleDeleteProgram(id)` function that deletes from `programs` table
-   - Add `allPrograms` state (fetches all programs regardless of `is_active` for admin view)
-   - In the "Add Program" tab content, add a section below the form showing all programs as cards with delete buttons
-   - Add a confirmation alert dialog before deletion
+5. Import `Table, TableHeader, TableBody, TableRow, TableHead, TableCell` from UI components, plus `Copy, Mail` icons from lucide-react
+
+**`supabase/functions/send-notification/index.ts`**
+
+Add a new email type `registration_report` to handle sending registration data:
+- Accepts `programTitle`, `registrations` array, and recipient email
+- Renders an HTML email with the registrations formatted as an HTML table
+- Sends via Resend API to justiceadam673@gmail.com
+
+### RLS Note
+The existing RLS policy on `program_registrations` already allows admins to SELECT all registrations (`has_role(auth.uid(), 'admin')`), so no database changes are needed.
 
