@@ -1,48 +1,70 @@
 
 
-## Registered Status and Email Reminders for Programs
+## Edit Programs, Custom Fields, and Enhanced Admin Cards
 
-### 1. Show "Registered" button for already-registered users
+### Overview
 
-**File: `src/pages/Registration.tsx`**
+Add editing capabilities to the admin program list, support for custom registration fields per program, and show program images in the admin list with a more visually appealing card design.
 
-- Add a new state `userRegistrations` (a `Set<string>` of program IDs the current user has registered for).
-- On page load, query `program_registrations` filtered by `user_id = user.id` to get all program IDs the user is registered for.
-- Update the realtime subscription to also refresh this set when `program_registrations` changes.
-- In the program card's Register button:
-  - If the user's program ID is in `userRegistrations`, show a disabled button with text **"Registered"** (green/success styling).
-  - Otherwise, keep the current "Register Now" / "Closed" / "Full" logic.
-- After a successful registration, immediately add the program ID to `userRegistrations` for instant UI feedback.
+### 1. Database Change
 
-### 2. Automated email reminders every 2 days until the program starts
+Add a `custom_fields` JSONB column to the `programs` table to store dynamic input definitions per program.
 
-**New edge function: `supabase/functions/send-program-reminders/index.ts`**
+```sql
+ALTER TABLE programs ADD COLUMN custom_fields jsonb DEFAULT '[]'::jsonb;
+```
 
-- This function will be called on a schedule (via a cron job).
-- Logic:
-  1. Query all programs where `start_date > now()` and `is_active = true`.
-  2. For each program, query all registrations to get participant emails and names.
-  3. Send a reminder email to each registered user using the Resend API, including the program title, start date, and location.
-- The function uses the `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `RESEND_API_KEY` secrets (all already configured).
+Each custom field will be stored as: `[{ "id": "uuid", "label": "Shirt Size", "required": false }, ...]`
 
-**Schedule the cron job:**
+Also add a `custom_field_values` JSONB column to `program_registrations` to store user responses:
 
-- Use `pg_cron` and `pg_net` extensions to call the edge function every 2 days.
-- SQL to schedule: `cron.schedule('program-reminders', '0 8 */2 * *', ...)` -- runs at 8 AM every 2 days.
-- This will be set up via the SQL insert tool (not migration, since it contains project-specific URLs).
+```sql
+ALTER TABLE program_registrations ADD COLUMN custom_field_values jsonb DEFAULT '{}'::jsonb;
+```
 
-**Update `supabase/config.toml`** to add the new function with `verify_jwt = false`.
+### 2. Admin Program List -- Enhanced Cards with Image and Edit Button
+
+Each program card in the "Existing Programs" section will be redesigned:
+- Show the program image as a small thumbnail on the left side of the card
+- Add an **Edit** (pencil icon) button next to the existing Delete button
+- Keep the click-to-view-registrations behavior
+- More visually distinct styling with gradient accents
+
+### 3. Edit Program Dialog
+
+A new dialog that opens when clicking the Edit button, pre-filled with the program's current data:
+- All existing fields (title, description, dates, location, max participants, image)
+- Option to upload a new image (replacing the old one)
+- A "Custom Fields" section at the bottom with:
+  - A list of existing custom fields (label + required toggle + delete button)
+  - An "Add Field" button that adds a new row with a label input and a required checkbox
+- Save button that updates the program in the database
+
+### 4. Registration Form -- Dynamic Custom Fields
+
+When a user opens the registration dialog:
+- After the standard fields (name, email, phone, gender, denomination, special request), render any custom fields defined for the selected program
+- Each custom field renders as a text input with its label
+- Values are saved to the `custom_field_values` JSONB column in `program_registrations`
+
+### 5. Registrations Viewer -- Show Custom Fields
+
+The registrations table dialog will also display any custom field values as additional columns.
 
 ### Technical Details
 
-**Files to create:**
-- `supabase/functions/send-program-reminders/index.ts` -- new edge function for reminders
-
 **Files to modify:**
-- `src/pages/Registration.tsx` -- add `userRegistrations` state, fetch user's registrations, update button rendering
-- `supabase/config.toml` -- add `send-program-reminders` function config
+- `src/pages/Registration.tsx` -- add edit dialog, custom fields UI in both create and edit forms, render custom fields in registration form, show images in admin list, display custom field values in registrations viewer
 
-**Database changes:**
-- Enable `pg_cron` and `pg_net` extensions
-- Create a cron job to invoke the reminder function every 2 days
+**Database migration:**
+- Add `custom_fields` (jsonb, default `'[]'`) to `programs`
+- Add `custom_field_values` (jsonb, default `'{}'`) to `program_registrations`
+
+**New state/interfaces:**
+- `CustomField` interface: `{ id: string; label: string; required: boolean }`
+- `editingProgram` state for the edit dialog
+- `editForm` state mirroring programForm plus `custom_fields` array
+- `editImageFile` for optional image replacement
+
+**No RLS changes needed** -- existing admin policies on `programs` already allow UPDATE.
 
