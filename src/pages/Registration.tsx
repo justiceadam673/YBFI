@@ -200,6 +200,7 @@ const Registration = () => {
     setSendingEmail(false);
   };
 
+  const handleDeleteProgram = async (programId: string) => {
     const { error } = await supabase.from("programs").delete().eq("id", programId);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
