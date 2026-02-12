@@ -62,6 +62,7 @@ const Registration = () => {
   const [programRegistrations, setProgramRegistrations] = useState<Registration[]>([]);
   const [loadingRegistrations, setLoadingRegistrations] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [userRegistrations, setUserRegistrations] = useState<Set<string>>(new Set());
 
   // Add Program form state
   const [programForm, setProgramForm] = useState({
@@ -84,18 +85,28 @@ const Registration = () => {
     special_request: "",
   });
 
+  const fetchUserRegistrations = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("program_registrations")
+      .select("program_id")
+      .eq("user_id", user.id);
+    if (data) setUserRegistrations(new Set(data.map(r => r.program_id)));
+  };
+
   useEffect(() => {
     fetchPrograms();
     if (isAdmin) fetchAllPrograms();
+    if (user) fetchUserRegistrations();
 
     const channel = supabase
       .channel("programs-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "programs" }, () => { fetchPrograms(); if (isAdmin) fetchAllPrograms(); })
-      .on("postgres_changes", { event: "*", schema: "public", table: "program_registrations" }, () => { fetchPrograms(); if (isAdmin) fetchAllPrograms(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "program_registrations" }, () => { fetchPrograms(); if (isAdmin) fetchAllPrograms(); fetchUserRegistrations(); })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [isAdmin]);
+  }, [isAdmin, user]);
 
   useEffect(() => {
     if (profile) {
@@ -279,6 +290,7 @@ const Registration = () => {
       }
     } else {
       toast({ title: "Registered!", description: `You have successfully registered for ${selectedProgram.title}.` });
+      setUserRegistrations(prev => new Set(prev).add(selectedProgram.id));
       setRegDialogOpen(false);
       setRegForm(prev => ({ ...prev, phone: "", gender: "", denomination: "", special_request: "" }));
     }
@@ -379,13 +391,19 @@ const Registration = () => {
                         <p className="text-xs text-muted-foreground">
                           Registration deadline: {format(new Date(program.registration_deadline), "MMM d, yyyy")}
                         </p>
-                        <Button
-                          className="w-full"
-                          disabled={deadlinePassed || full}
-                          onClick={() => { setSelectedProgram(program); setRegDialogOpen(true); }}
-                        >
-                          {deadlinePassed ? "Registration Closed" : full ? "Program Full" : "Register Now"}
-                        </Button>
+                        {userRegistrations.has(program.id) ? (
+                          <Button className="w-full bg-emerald-600/90 hover:bg-emerald-600/90 text-primary-foreground cursor-default" disabled>
+                            ✓ Registered
+                          </Button>
+                        ) : (
+                          <Button
+                            className="w-full"
+                            disabled={deadlinePassed || full}
+                            onClick={() => { setSelectedProgram(program); setRegDialogOpen(true); }}
+                          >
+                            {deadlinePassed ? "Registration Closed" : full ? "Program Full" : "Register Now"}
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
                   );
