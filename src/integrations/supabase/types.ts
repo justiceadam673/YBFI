@@ -348,6 +348,101 @@ export type Database = {
         }
         Relationships: []
       }
+      program_registrations: {
+        Row: {
+          created_at: string
+          denomination: string | null
+          email: string
+          gender: string
+          id: string
+          name: string
+          phone: string
+          program_id: string
+          special_request: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          denomination?: string | null
+          email: string
+          gender: string
+          id?: string
+          name: string
+          phone: string
+          program_id: string
+          special_request?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          denomination?: string | null
+          email?: string
+          gender?: string
+          id?: string
+          name?: string
+          phone?: string
+          program_id?: string
+          special_request?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_registrations_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      programs: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          end_date: string
+          id: string
+          image_url: string | null
+          is_active: boolean
+          location: string | null
+          max_participants: number | null
+          registration_deadline: string
+          start_date: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          end_date: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          location?: string | null
+          max_participants?: number | null
+          registration_deadline: string
+          start_date: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          end_date?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          location?: string | null
+          max_participants?: number | null
+          registration_deadline?: string
+          start_date?: string
+          title?: string
+        }
+        Relationships: []
+      }
       questions: {
         Row: {
           answer: string | null

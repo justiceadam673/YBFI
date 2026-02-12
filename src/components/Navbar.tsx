@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, ChevronDown, Bot, Download, Heart, Users, User } from "lucide-react";
+import { Menu, X, ChevronDown, Bot, Download, Heart, Users, User, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -32,6 +32,7 @@ const Navbar = () => {
     { name: "Support", path: "/partner" },
     { name: "Admin Q&A", path: "/admin-qa" },
     { name: "Admin News", path: "/admin-announcements" },
+    { name: "Registration", path: "/registration" },
     {
       name: "WhatsApp",
       path: "https://chat.whatsapp.com/DzxsuHOQQpo6II0RK22VN0",
@@ -170,6 +171,12 @@ const Navbar = () => {
                   <Link to='/admin-users' className='w-full cursor-pointer flex items-center gap-2'>
                     <Users className="h-4 w-4" />
                     Manage Users
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to='/registration' className='w-full cursor-pointer flex items-center gap-2'>
+                    <ClipboardList className="h-4 w-4" />
+                    Registration
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
