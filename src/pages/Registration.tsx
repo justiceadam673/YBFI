@@ -9,11 +9,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, MapPin, Users, Plus, ClipboardList, Loader2, ImageIcon } from "lucide-react";
+import { Calendar, MapPin, Users, Plus, ClipboardList, Loader2, ImageIcon, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 
 interface Program {
@@ -48,6 +49,7 @@ const Registration = () => {
   const { user, profile, isAdmin } = useAuth();
   const { toast } = useToast();
   const [programs, setPrograms] = useState<Program[]>([]);
+  const [allPrograms, setAllPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
@@ -79,15 +81,16 @@ const Registration = () => {
 
   useEffect(() => {
     fetchPrograms();
+    if (isAdmin) fetchAllPrograms();
 
     const channel = supabase
       .channel("programs-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "programs" }, () => fetchPrograms())
-      .on("postgres_changes", { event: "*", schema: "public", table: "program_registrations" }, () => fetchPrograms())
+      .on("postgres_changes", { event: "*", schema: "public", table: "programs" }, () => { fetchPrograms(); if (isAdmin) fetchAllPrograms(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "program_registrations" }, () => { fetchPrograms(); if (isAdmin) fetchAllPrograms(); })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     if (profile) {
@@ -120,6 +123,38 @@ const Registration = () => {
       setRegistrationCounts(counts);
     }
     setLoading(false);
+  };
+
+  const fetchAllPrograms = async () => {
+    const { data, error } = await supabase
+      .from("programs")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      setAllPrograms(data);
+      // Also fetch counts for all programs
+      const counts: Record<string, number> = {};
+      for (const p of data) {
+        if (!registrationCounts[p.id]) {
+          const { count } = await supabase
+            .from("program_registrations")
+            .select("*", { count: "exact", head: true })
+            .eq("program_id", p.id);
+          counts[p.id] = count || 0;
+        }
+      }
+      setRegistrationCounts(prev => ({ ...prev, ...counts }));
+    }
+  };
+
+  const handleDeleteProgram = async (programId: string) => {
+    const { error } = await supabase.from("programs").delete().eq("id", programId);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Deleted", description: "Program has been deleted successfully." });
+    }
   };
 
   const handleAddProgram = async () => {
@@ -357,6 +392,69 @@ const Registration = () => {
                   </Button>
                 </CardContent>
               </Card>
+
+              {/* Existing Programs List */}
+              <div className="max-w-2xl mx-auto mt-8">
+                <h3 className="text-xl font-semibold mb-4">Existing Programs</h3>
+                {allPrograms.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No programs created yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {allPrograms.map((program) => (
+                      <Card key={program.id} className="glass-card">
+                        <CardContent className="flex items-center justify-between p-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-medium truncate">{program.title}</h4>
+                              <Badge variant={program.is_active ? "default" : "secondary"} className="text-xs">
+                                {program.is_active ? "Active" : "Inactive"}
+                              </Badge>
+                            </div>
+                            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {format(new Date(program.start_date), "MMM d")} - {format(new Date(program.end_date), "MMM d, yyyy")}
+                              </span>
+                              {program.location && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {program.location}
+                                </span>
+                              )}
+                              <span className="flex items-center gap-1">
+                                <Users className="h-3 w-3" />
+                                {registrationCounts[program.id] || 0} registered
+                                {program.max_participants ? ` / ${program.max_participants}` : ""}
+                              </span>
+                            </div>
+                          </div>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="icon" className="ml-3 shrink-0">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Program</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{program.title}"? This action cannot be undone and will also remove all registrations for this program.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteProgram(program.id)}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
             </TabsContent>
           )}
         </Tabs>
