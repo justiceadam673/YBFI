@@ -351,6 +351,7 @@ export type Database = {
       program_registrations: {
         Row: {
           created_at: string
+          custom_field_values: Json | null
           denomination: string | null
           email: string
           gender: string
@@ -364,6 +365,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          custom_field_values?: Json | null
           denomination?: string | null
           email: string
           gender: string
@@ -377,6 +379,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          custom_field_values?: Json | null
           denomination?: string | null
           email?: string
           gender?: string
@@ -402,6 +405,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          custom_fields: Json | null
           description: string | null
           end_date: string
           id: string
@@ -416,6 +420,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          custom_fields?: Json | null
           description?: string | null
           end_date: string
           id?: string
@@ -430,6 +435,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          custom_fields?: Json | null
           description?: string | null
           end_date?: string
           id?: string

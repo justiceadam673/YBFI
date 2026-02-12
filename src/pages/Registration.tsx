@@ -13,10 +13,17 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, MapPin, Users, Plus, ClipboardList, Loader2, ImageIcon, Trash2, Copy, Mail } from "lucide-react";
+import { Calendar, MapPin, Users, Plus, ClipboardList, Loader2, ImageIcon, Trash2, Copy, Mail, Pencil, X } from "lucide-react";
 import { format } from "date-fns";
+
+interface CustomField {
+  id: string;
+  label: string;
+  required: boolean;
+}
 
 interface Program {
   id: string;
@@ -31,6 +38,7 @@ interface Program {
   is_active: boolean;
   created_at: string;
   created_by: string;
+  custom_fields?: CustomField[];
 }
 
 interface Registration {
@@ -44,6 +52,7 @@ interface Registration {
   special_request: string | null;
   status: string;
   created_at: string;
+  custom_field_values?: Record<string, string>;
 }
 
 const Registration = () => {
@@ -64,25 +73,28 @@ const Registration = () => {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [userRegistrations, setUserRegistrations] = useState<Set<string>>(new Set());
 
+  // Edit program state
+  const [editingProgram, setEditingProgram] = useState<Program | null>(null);
+  const [editForm, setEditForm] = useState({
+    title: "", description: "", start_date: "", end_date: "",
+    registration_deadline: "", location: "", max_participants: "",
+  });
+  const [editCustomFields, setEditCustomFields] = useState<CustomField[]>([]);
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
+  // Custom field values for registration
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
+
   // Add Program form state
   const [programForm, setProgramForm] = useState({
-    title: "",
-    description: "",
-    start_date: "",
-    end_date: "",
-    registration_deadline: "",
-    location: "",
-    max_participants: "",
+    title: "", description: "", start_date: "", end_date: "",
+    registration_deadline: "", location: "", max_participants: "",
   });
 
   // Registration form state
   const [regForm, setRegForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    gender: "",
-    denomination: "",
-    special_request: "",
+    name: "", email: "", phone: "", gender: "", denomination: "", special_request: "",
   });
 
   const fetchUserRegistrations = async () => {
@@ -126,8 +138,7 @@ const Registration = () => {
       .order("start_date", { ascending: true });
 
     if (!error && data) {
-      setPrograms(data);
-      // Fetch registration counts for each program
+      setPrograms(data as unknown as Program[]);
       const counts: Record<string, number> = {};
       for (const p of data) {
         const { count } = await supabase
@@ -148,8 +159,7 @@ const Registration = () => {
       .order("created_at", { ascending: false });
 
     if (!error && data) {
-      setAllPrograms(data);
-      // Also fetch counts for all programs
+      setAllPrograms(data as unknown as Program[]);
       const counts: Record<string, number> = {};
       for (const p of data) {
         if (!registrationCounts[p.id]) {
@@ -171,7 +181,7 @@ const Registration = () => {
       .select("*")
       .eq("program_id", programId)
       .order("created_at", { ascending: true });
-    if (!error && data) setProgramRegistrations(data);
+    if (!error && data) setProgramRegistrations(data as unknown as Registration[]);
     setLoadingRegistrations(false);
   };
 
@@ -182,10 +192,12 @@ const Registration = () => {
   };
 
   const handleCopyRegistrations = async () => {
-    const header = "Name\tEmail\tPhone\tGender\tDenomination\tSpecial Request\tDate Registered";
-    const rows = programRegistrations.map(r =>
-      `${r.name}\t${r.email}\t${r.phone}\t${r.gender}\t${r.denomination || '-'}\t${r.special_request || '-'}\t${format(new Date(r.created_at), "MMM d, yyyy")}`
-    );
+    const customFields: CustomField[] = (viewingProgram as any)?.custom_fields || [];
+    const header = ["Name", "Email", "Phone", "Gender", "Denomination", "Special Request", ...customFields.map(f => f.label), "Date Registered"].join("\t");
+    const rows = programRegistrations.map(r => {
+      const cfValues = (r as any).custom_field_values || {};
+      return [r.name, r.email, r.phone, r.gender, r.denomination || '-', r.special_request || '-', ...customFields.map(f => cfValues[f.id] || '-'), format(new Date(r.created_at), "MMM d, yyyy")].join("\t");
+    });
     await navigator.clipboard.writeText([header, ...rows].join("\n"));
     toast({ title: "Copied!", description: "Registration data copied to clipboard." });
   };
@@ -264,10 +276,91 @@ const Registration = () => {
     setSubmitting(false);
   };
 
+  // Edit program handlers
+  const openEditDialog = (program: Program) => {
+    setEditingProgram(program);
+    setEditForm({
+      title: program.title,
+      description: program.description || "",
+      start_date: program.start_date,
+      end_date: program.end_date,
+      registration_deadline: program.registration_deadline,
+      location: program.location || "",
+      max_participants: program.max_participants?.toString() || "",
+    });
+    setEditCustomFields((program as any).custom_fields || []);
+    setEditImageFile(null);
+  };
+
+  const handleAddCustomField = () => {
+    setEditCustomFields(prev => [...prev, { id: crypto.randomUUID(), label: "", required: false }]);
+  };
+
+  const handleRemoveCustomField = (id: string) => {
+    setEditCustomFields(prev => prev.filter(f => f.id !== id));
+  };
+
+  const handleUpdateCustomField = (id: string, updates: Partial<CustomField>) => {
+    setEditCustomFields(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingProgram) return;
+    if (!editForm.title || !editForm.start_date || !editForm.end_date || !editForm.registration_deadline) {
+      toast({ title: "Missing fields", description: "Please fill in all required fields.", variant: "destructive" });
+      return;
+    }
+    // Validate custom fields have labels
+    const validFields = editCustomFields.filter(f => f.label.trim());
+    setEditSubmitting(true);
+
+    let image_url = editingProgram.image_url;
+    if (editImageFile) {
+      const ext = editImageFile.name.split(".").pop();
+      const path = `${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("program-images").upload(path, editImageFile);
+      if (uploadError) {
+        toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" });
+        setEditSubmitting(false);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from("program-images").getPublicUrl(path);
+      image_url = urlData.publicUrl;
+    }
+
+    const { error } = await supabase.from("programs").update({
+      title: editForm.title,
+      description: editForm.description || null,
+      image_url,
+      start_date: editForm.start_date,
+      end_date: editForm.end_date,
+      registration_deadline: editForm.registration_deadline,
+      location: editForm.location || null,
+      max_participants: editForm.max_participants ? parseInt(editForm.max_participants) : null,
+      custom_fields: validFields as unknown as any,
+    }).eq("id", editingProgram.id);
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Updated!", description: "Program has been updated successfully." });
+      setEditingProgram(null);
+    }
+    setEditSubmitting(false);
+  };
+
   const handleRegister = async () => {
     if (!selectedProgram || !regForm.name || !regForm.email || !regForm.phone || !regForm.gender) {
       toast({ title: "Missing fields", description: "Please fill in all required fields.", variant: "destructive" });
       return;
+    }
+    // Validate required custom fields
+    const customFields: CustomField[] = (selectedProgram as any)?.custom_fields || [];
+    for (const field of customFields) {
+      if (field.required && !customFieldValues[field.id]?.trim()) {
+        toast({ title: "Missing fields", description: `Please fill in "${field.label}".`, variant: "destructive" });
+        return;
+      }
     }
     setSubmitting(true);
 
@@ -280,6 +373,7 @@ const Registration = () => {
       gender: regForm.gender,
       denomination: regForm.denomination || null,
       special_request: regForm.special_request || null,
+      custom_field_values: customFieldValues as unknown as any,
     });
 
     if (error) {
@@ -293,6 +387,7 @@ const Registration = () => {
       setUserRegistrations(prev => new Set(prev).add(selectedProgram.id));
       setRegDialogOpen(false);
       setRegForm(prev => ({ ...prev, phone: "", gender: "", denomination: "", special_request: "" }));
+      setCustomFieldValues({});
     }
     setSubmitting(false);
   };
@@ -399,7 +494,11 @@ const Registration = () => {
                           <Button
                             className="w-full"
                             disabled={deadlinePassed || full}
-                            onClick={() => { setSelectedProgram(program); setRegDialogOpen(true); }}
+                            onClick={() => {
+                              setSelectedProgram(program);
+                              setCustomFieldValues({});
+                              setRegDialogOpen(true);
+                            }}
                           >
                             {deadlinePassed ? "Registration Closed" : full ? "Program Full" : "Register Now"}
                           </Button>
@@ -469,56 +568,92 @@ const Registration = () => {
                 {allPrograms.length === 0 ? (
                   <p className="text-muted-foreground text-center py-8">No programs created yet.</p>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {allPrograms.map((program) => (
-                      <Card key={program.id} className="glass-card cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => handleViewProgram(program)}>
-                        <CardContent className="flex items-center justify-between p-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-medium truncate">{program.title}</h4>
-                              <Badge variant={program.is_active ? "default" : "secondary"} className="text-xs">
-                                {program.is_active ? "Active" : "Inactive"}
-                              </Badge>
-                            </div>
-                            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                {format(new Date(program.start_date), "MMM d")} - {format(new Date(program.end_date), "MMM d, yyyy")}
-                              </span>
-                              {program.location && (
+                      <Card
+                        key={program.id}
+                        className="overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all border-l-4 border-l-primary/60"
+                        onClick={() => handleViewProgram(program)}
+                      >
+                        <CardContent className="flex items-stretch p-0">
+                          {/* Program Image Thumbnail */}
+                          <div className="w-24 sm:w-32 shrink-0 relative overflow-hidden bg-muted">
+                            {program.image_url ? (
+                              <img
+                                src={program.image_url}
+                                alt={program.title}
+                                className="w-full h-full object-cover absolute inset-0"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
+                              </div>
+                            )}
+                          </div>
+                          {/* Program Details */}
+                          <div className="flex-1 min-w-0 p-4 flex items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <h4 className="font-semibold truncate">{program.title}</h4>
+                                <Badge variant={program.is_active ? "default" : "secondary"} className="text-xs">
+                                  {program.is_active ? "Active" : "Inactive"}
+                                </Badge>
+                              </div>
+                              <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                                 <span className="flex items-center gap-1">
-                                  <MapPin className="h-3 w-3" />
-                                  {program.location}
+                                  <Calendar className="h-3 w-3" />
+                                  {format(new Date(program.start_date), "MMM d")} - {format(new Date(program.end_date), "MMM d, yyyy")}
                                 </span>
+                                {program.location && (
+                                  <span className="flex items-center gap-1">
+                                    <MapPin className="h-3 w-3" />
+                                    {program.location}
+                                  </span>
+                                )}
+                                <span className="flex items-center gap-1">
+                                  <Users className="h-3 w-3" />
+                                  {registrationCounts[program.id] || 0} registered
+                                  {program.max_participants ? ` / ${program.max_participants}` : ""}
+                                </span>
+                              </div>
+                              {((program as any).custom_fields || []).length > 0 && (
+                                <p className="text-xs text-primary/70 mt-1">
+                                  {((program as any).custom_fields || []).length} custom field(s)
+                                </p>
                               )}
-                              <span className="flex items-center gap-1">
-                                <Users className="h-3 w-3" />
-                                {registrationCounts[program.id] || 0} registered
-                                {program.max_participants ? ` / ${program.max_participants}` : ""}
-                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={(e) => { e.stopPropagation(); openEditDialog(program); }}
+                                title="Edit program"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="destructive" size="icon" onClick={(e) => e.stopPropagation()}>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Program</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete "{program.title}"? This action cannot be undone and will also remove all registrations for this program.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteProgram(program.id)}>
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </div>
                           </div>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="destructive" size="icon" className="ml-3 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Program</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{program.title}"? This action cannot be undone and will also remove all registrations for this program.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteProgram(program.id)}>
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
                         </CardContent>
                       </Card>
                     ))}
@@ -569,8 +704,126 @@ const Registration = () => {
               <Label htmlFor="reg-special">Special Request</Label>
               <Textarea id="reg-special" placeholder="Any special needs or requests..." value={regForm.special_request} onChange={e => setRegForm(p => ({ ...p, special_request: e.target.value }))} />
             </div>
+
+            {/* Dynamic Custom Fields */}
+            {selectedProgram && ((selectedProgram as any).custom_fields || []).length > 0 && (
+              <>
+                <div className="border-t pt-4">
+                  <p className="text-sm font-medium text-muted-foreground mb-3">Additional Information</p>
+                </div>
+                {((selectedProgram as any).custom_fields as CustomField[]).map((field) => (
+                  <div key={field.id} className="space-y-2">
+                    <Label htmlFor={`cf-${field.id}`}>
+                      {field.label} {field.required && "*"}
+                    </Label>
+                    <Input
+                      id={`cf-${field.id}`}
+                      placeholder={`Enter ${field.label.toLowerCase()}`}
+                      value={customFieldValues[field.id] || ""}
+                      onChange={e => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+              </>
+            )}
+
             <Button onClick={handleRegister} disabled={submitting} className="w-full">
               {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Registering...</> : "Submit Registration"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Program Dialog */}
+      <Dialog open={!!editingProgram} onOpenChange={(open) => { if (!open) setEditingProgram(null); }}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Program</DialogTitle>
+            <DialogDescription>Update program details and manage custom registration fields.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>Program Title *</Label>
+              <Input value={editForm.title} onChange={e => setEditForm(p => ({ ...p, title: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea value={editForm.description} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Program Image</Label>
+              {editingProgram?.image_url && !editImageFile && (
+                <img src={editingProgram.image_url} alt="Current" className="w-full h-32 object-cover rounded-md mb-2" />
+              )}
+              <Input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => setEditImageFile(e.target.files?.[0] || null)} />
+              {editImageFile && <p className="text-xs text-muted-foreground">New image selected: {editImageFile.name}</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Start Date *</Label>
+                <Input type="date" value={editForm.start_date} onChange={e => setEditForm(p => ({ ...p, start_date: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>End Date *</Label>
+                <Input type="date" value={editForm.end_date} onChange={e => setEditForm(p => ({ ...p, end_date: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Registration Deadline *</Label>
+                <Input type="date" value={editForm.registration_deadline} onChange={e => setEditForm(p => ({ ...p, registration_deadline: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Max Participants</Label>
+                <Input type="number" placeholder="Unlimited" value={editForm.max_participants} onChange={e => setEditForm(p => ({ ...p, max_participants: e.target.value }))} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Location</Label>
+              <Input value={editForm.location} onChange={e => setEditForm(p => ({ ...p, location: e.target.value }))} />
+            </div>
+
+            {/* Custom Fields Section */}
+            <div className="border-t pt-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-semibold">Custom Registration Fields</Label>
+                <Button type="button" variant="outline" size="sm" onClick={handleAddCustomField} className="flex items-center gap-1">
+                  <Plus className="h-3 w-3" /> Add Field
+                </Button>
+              </div>
+              {editCustomFields.length === 0 && (
+                <p className="text-sm text-muted-foreground">No custom fields yet. Add fields to collect extra info from registrants.</p>
+              )}
+              {editCustomFields.map((field) => (
+                <div key={field.id} className="flex items-center gap-2 p-3 rounded-lg border bg-muted/30">
+                  <Input
+                    placeholder="Field label (e.g. Shirt Size)"
+                    value={field.label}
+                    onChange={e => handleUpdateCustomField(field.id, { label: e.target.value })}
+                    className="flex-1"
+                  />
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Label className="text-xs text-muted-foreground">Required</Label>
+                    <Switch
+                      checked={field.required}
+                      onCheckedChange={checked => handleUpdateCustomField(field.id, { required: checked })}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveCustomField(field.id)}
+                    className="shrink-0 text-destructive hover:text-destructive"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            <Button onClick={handleSaveEdit} disabled={editSubmitting} className="w-full">
+              {editSubmitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Saving...</> : "Save Changes"}
             </Button>
           </div>
         </DialogContent>
@@ -599,21 +852,30 @@ const Registration = () => {
                   <TableHead>Gender</TableHead>
                   <TableHead>Denomination</TableHead>
                   <TableHead>Special Request</TableHead>
+                  {((viewingProgram as any)?.custom_fields as CustomField[] || []).map(f => (
+                    <TableHead key={f.id}>{f.label}</TableHead>
+                  ))}
                   <TableHead>Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {programRegistrations.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell>{r.name}</TableCell>
-                    <TableCell>{r.email}</TableCell>
-                    <TableCell>{r.phone}</TableCell>
-                    <TableCell className="capitalize">{r.gender}</TableCell>
-                    <TableCell>{r.denomination || "-"}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">{r.special_request || "-"}</TableCell>
-                    <TableCell>{format(new Date(r.created_at), "MMM d, yyyy")}</TableCell>
-                  </TableRow>
-                ))}
+                {programRegistrations.map((r) => {
+                  const cfValues = (r as any).custom_field_values || {};
+                  return (
+                    <TableRow key={r.id}>
+                      <TableCell>{r.name}</TableCell>
+                      <TableCell>{r.email}</TableCell>
+                      <TableCell>{r.phone}</TableCell>
+                      <TableCell className="capitalize">{r.gender}</TableCell>
+                      <TableCell>{r.denomination || "-"}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">{r.special_request || "-"}</TableCell>
+                      {((viewingProgram as any)?.custom_fields as CustomField[] || []).map(f => (
+                        <TableCell key={f.id}>{cfValues[f.id] || "-"}</TableCell>
+                      ))}
+                      <TableCell>{format(new Date(r.created_at), "MMM d, yyyy")}</TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
