@@ -1,70 +1,49 @@
 
 
-## Edit Programs, Custom Fields, and Enhanced Admin Cards
+## Fix Message Upload and Add Loading Spinner
 
-### Overview
+### Problem Analysis
 
-Add editing capabilities to the admin program list, support for custom registration fields per program, and show program images in the admin list with a more visually appealing card design.
+After thorough investigation, the backend (storage bucket, RLS policies, edge function, database) all appear correctly configured. The most likely issues are:
 
-### 1. Database Change
+1. **Storage upload may be failing silently** -- the `return` statement after `uploadError` exits the `try` block, and while `finally` does set `isUploading(false)`, the toast error may not be visible enough or the error object might not have a `.message` property.
+2. **File reference could be lost** -- when spreading `newMessage` in onChange handlers, the `file` property could be overwritten back to `null` if React batches state updates.
+3. **The file input needs a `ref`** to properly reset after upload.
 
-Add a `custom_fields` JSONB column to the `programs` table to store dynamic input definitions per program.
+### Changes to `src/pages/Messages.tsx`
 
-```sql
-ALTER TABLE programs ADD COLUMN custom_fields jsonb DEFAULT '[]'::jsonb;
-```
+1. **Use a `ref` for the file input** so it can be properly reset and the file is reliably captured.
 
-Each custom field will be stored as: `[{ "id": "uuid", "label": "Shirt Size", "required": false }, ...]`
+2. **Store the file separately** from the `newMessage` state to avoid it being accidentally overwritten during state spreading. Keep `audioFile` as its own `useState<File | null>`.
 
-Also add a `custom_field_values` JSONB column to `program_registrations` to store user responses:
+3. **Add a loading spinner to the "Verify" button** too, so it doesn't feel unresponsive when checking the admin password.
 
-```sql
-ALTER TABLE program_registrations ADD COLUMN custom_field_values jsonb DEFAULT '{}'::jsonb;
-```
+4. **Add `console.log` breadcrumbs** at each step (start, file selected, upload start, upload success, DB insert) for easier debugging.
 
-### 2. Admin Program List -- Enhanced Cards with Image and Edit Button
+5. **Ensure the toast shows proper errors** by safely accessing error properties: `uploadError?.message || JSON.stringify(uploadError)`.
 
-Each program card in the "Existing Programs" section will be redesigned:
-- Show the program image as a small thumbnail on the left side of the card
-- Add an **Edit** (pencil icon) button next to the existing Delete button
-- Keep the click-to-view-registrations behavior
-- More visually distinct styling with gradient accents
+6. **Reset the file input element** using the ref after successful upload: `fileInputRef.current.value = ''`.
 
-### 3. Edit Program Dialog
-
-A new dialog that opens when clicking the Edit button, pre-filled with the program's current data:
-- All existing fields (title, description, dates, location, max participants, image)
-- Option to upload a new image (replacing the old one)
-- A "Custom Fields" section at the bottom with:
-  - A list of existing custom fields (label + required toggle + delete button)
-  - An "Add Field" button that adds a new row with a label input and a required checkbox
-- Save button that updates the program in the database
-
-### 4. Registration Form -- Dynamic Custom Fields
-
-When a user opens the registration dialog:
-- After the standard fields (name, email, phone, gender, denomination, special request), render any custom fields defined for the selected program
-- Each custom field renders as a text input with its label
-- Values are saved to the `custom_field_values` JSONB column in `program_registrations`
-
-### 5. Registrations Viewer -- Show Custom Fields
-
-The registrations table dialog will also display any custom field values as additional columns.
+7. **Add `type="button"`** to the "Add Message" and "Verify" buttons to prevent any accidental form submission behavior.
 
 ### Technical Details
 
-**Files to modify:**
-- `src/pages/Registration.tsx` -- add edit dialog, custom fields UI in both create and edit forms, render custom fields in registration form, show images in admin list, display custom field values in registrations viewer
+**File modified:** `src/pages/Messages.tsx`
 
-**Database migration:**
-- Add `custom_fields` (jsonb, default `'[]'`) to `programs`
-- Add `custom_field_values` (jsonb, default `'{}'`) to `program_registrations`
+**Key state changes:**
+- Add `const [audioFile, setAudioFile] = useState<File | null>(null)` -- separate from `newMessage`
+- Add `const fileInputRef = useRef<HTMLInputElement>(null)` -- for resetting the file input
+- Add `const [isVerifying, setIsVerifying] = useState(false)` -- spinner for verify button
+- Remove `file` from `newMessage` state object
 
-**New state/interfaces:**
-- `CustomField` interface: `{ id: string; label: string; required: boolean }`
-- `editingProgram` state for the edit dialog
-- `editForm` state mirroring programForm plus `custom_fields` array
-- `editImageFile` for optional image replacement
+**Upload handler changes:**
+- Reference `audioFile` instead of `newMessage.file`
+- Add console logs at each step for debugging
+- Safely stringify error messages
+- Reset `audioFile` and file input ref on success
 
-**No RLS changes needed** -- existing admin policies on `programs` already allow UPDATE.
+**UI changes:**
+- Verify button shows spinner while checking password
+- Add Message button shows spinner while uploading (already exists but ensure it works with separate file state)
+- Add `type="button"` to prevent form submission
 
