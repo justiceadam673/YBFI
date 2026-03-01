@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Music, Lock, Plus, Sparkles, Play } from "lucide-react";
+import { Music, Lock, Plus, Sparkles, Play, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,6 +25,7 @@ const Messages = () => {
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [newMessage, setNewMessage] = useState({
     title: "",
     date: "",
@@ -75,37 +76,48 @@ const Messages = () => {
       return;
     }
 
-    const fileName = `${Date.now()}-${newMessage.file.name}`;
-    const { error: uploadError } = await supabase.storage
-      .from("messages")
-      .upload(fileName, newMessage.file);
+    setIsUploading(true);
 
-    if (uploadError) {
-      toast({ title: "Error uploading file", variant: "destructive" });
-      return;
-    }
+    try {
+      const fileName = `${Date.now()}-${newMessage.file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from("messages")
+        .upload(fileName, newMessage.file);
 
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("messages").getPublicUrl(fileName);
+      if (uploadError) {
+        console.error("Storage upload error:", uploadError);
+        toast({ title: "Error uploading file", description: uploadError.message, variant: "destructive" });
+        return;
+      }
 
-    const { error } = await supabase.from("messages").insert([
-      {
-        title: newMessage.title,
-        date: newMessage.date,
-        audio_url: publicUrl,
-      },
-    ]);
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("messages").getPublicUrl(fileName);
 
-    if (error) {
-      toast({ title: "Error adding message", variant: "destructive" });
-    } else {
-      toast({ title: "Message added successfully" });
-      setNewMessage({ title: "", date: "", file: null });
-      setIsAdminDialogOpen(false);
-      setIsAuthenticated(false);
-      setAdminPassword("");
-      fetchMessages();
+      const { error } = await supabase.from("messages").insert([
+        {
+          title: newMessage.title,
+          date: newMessage.date,
+          audio_url: publicUrl,
+        },
+      ]);
+
+      if (error) {
+        console.error("DB insert error:", error);
+        toast({ title: "Error adding message", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Message added successfully" });
+        setNewMessage({ title: "", date: "", file: null });
+        setIsAdminDialogOpen(false);
+        setIsAuthenticated(false);
+        setAdminPassword("");
+        fetchMessages();
+      }
+    } catch (err: any) {
+      console.error("Unexpected error:", err);
+      toast({ title: "Something went wrong", description: err.message, variant: "destructive" });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -206,8 +218,9 @@ const Messages = () => {
                         }
                         className="border-border/50"
                       />
-                      <Button onClick={handleAddMessage} className="w-full">
-                        Add Message
+                      <Button onClick={handleAddMessage} className="w-full" disabled={isUploading}>
+                        {isUploading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                        {isUploading ? "Uploading..." : "Add Message"}
                       </Button>
                     </div>
                   )}
