@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Music, Lock, Plus, Sparkles, Play, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -26,11 +26,10 @@ const Messages = () => {
   const [adminPassword, setAdminPassword] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [newMessage, setNewMessage] = useState({
-    title: "",
-    date: "",
-    file: null as File | null,
-  });
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [newMessage, setNewMessage] = useState({ title: "", date: "" });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const audioMap: Record<string, string> = {
     "day-1-takeover.mp3": dayOneTakeover,
@@ -57,65 +56,83 @@ const Messages = () => {
     }
   };
 
-  const verifyPassword = async () => {
-    const { data } = await supabase.functions.invoke("verify-admin-password", {
-      body: { password: adminPassword, action: "messages_gallery" },
-    });
+  const resetFormState = () => {
+    setNewMessage({ title: "", date: "" });
+    setAudioFile(null);
+    setAdminPassword("");
+    setIsAuthenticated(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
-    if (data?.valid) {
-      setIsAuthenticated(true);
-      toast({ title: "Access granted" });
-    } else {
-      toast({ title: "Invalid password", variant: "destructive" });
+  const handleDialogChange = (open: boolean) => {
+    setIsAdminDialogOpen(open);
+    if (!open) resetFormState();
+  };
+
+  const verifyPassword = async () => {
+    setIsVerifying(true);
+    try {
+      const { data } = await supabase.functions.invoke("verify-admin-password", {
+        body: { password: adminPassword, action: "messages_gallery" },
+      });
+
+      if (data?.valid) {
+        setIsAuthenticated(true);
+        toast({ title: "Access granted" });
+      } else {
+        toast({ title: "Invalid password", variant: "destructive" });
+      }
+    } catch (err: any) {
+      console.error("Verify error:", err);
+      toast({ title: "Verification failed", variant: "destructive" });
+    } finally {
+      setIsVerifying(false);
     }
   };
 
   const handleAddMessage = async () => {
-    if (!newMessage.title || !newMessage.date || !newMessage.file) {
-      toast({ title: "Please fill all fields", variant: "destructive" });
+    if (isUploading) return;
+
+    if (!newMessage.title || !newMessage.date || !audioFile) {
+      toast({ title: "Please fill all fields and select an audio file", variant: "destructive" });
       return;
     }
 
     setIsUploading(true);
+    console.log("[Messages] Starting upload...", { title: newMessage.title, fileName: audioFile.name });
 
     try {
-      const fileName = `${Date.now()}-${newMessage.file.name}`;
+      const fileName = `${Date.now()}-${audioFile.name}`;
       const { error: uploadError } = await supabase.storage
         .from("messages")
-        .upload(fileName, newMessage.file);
+        .upload(fileName, audioFile, { upsert: false, contentType: audioFile.type });
 
       if (uploadError) {
-        console.error("Storage upload error:", uploadError);
-        toast({ title: "Error uploading file", description: uploadError.message, variant: "destructive" });
+        console.error("[Messages] Storage upload error:", uploadError);
+        toast({ title: "Error uploading file", description: uploadError.message || JSON.stringify(uploadError), variant: "destructive" });
         return;
       }
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("messages").getPublicUrl(fileName);
+      console.log("[Messages] Upload success, getting public URL...");
+      const { data: { publicUrl } } = supabase.storage.from("messages").getPublicUrl(fileName);
 
       const { error } = await supabase.from("messages").insert([
-        {
-          title: newMessage.title,
-          date: newMessage.date,
-          audio_url: publicUrl,
-        },
+        { title: newMessage.title, date: newMessage.date, audio_url: publicUrl },
       ]);
 
       if (error) {
-        console.error("DB insert error:", error);
-        toast({ title: "Error adding message", description: error.message, variant: "destructive" });
+        console.error("[Messages] DB insert error:", error);
+        toast({ title: "Error adding message", description: error.message || JSON.stringify(error), variant: "destructive" });
       } else {
+        console.log("[Messages] Message added successfully");
         toast({ title: "Message added successfully" });
-        setNewMessage({ title: "", date: "", file: null });
+        resetFormState();
         setIsAdminDialogOpen(false);
-        setIsAuthenticated(false);
-        setAdminPassword("");
         fetchMessages();
       }
     } catch (err: any) {
-      console.error("Unexpected error:", err);
-      toast({ title: "Something went wrong", description: err.message, variant: "destructive" });
+      console.error("[Messages] Unexpected error:", err);
+      toast({ title: "Something went wrong", description: err.message || String(err), variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
@@ -155,10 +172,7 @@ const Messages = () => {
         <section className="py-12 container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <div className="mb-8 flex justify-end">
-              <Dialog
-                open={isAdminDialogOpen}
-                onOpenChange={setIsAdminDialogOpen}
-              >
+              <Dialog open={isAdminDialogOpen} onOpenChange={handleDialogChange}>
                 <DialogTrigger asChild>
                   <Button variant="outline" className="gap-2 hover:shadow-elegant transition-all">
                     <Plus className="w-4 h-4" />
@@ -182,11 +196,12 @@ const Messages = () => {
                         placeholder="Admin Password"
                         value={adminPassword}
                         onChange={(e) => setAdminPassword(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && verifyPassword()}
+                        onKeyDown={(e) => e.key === "Enter" && !isVerifying && verifyPassword()}
                         className="border-border/50"
                       />
-                      <Button onClick={verifyPassword} className="w-full">
-                        Verify
+                      <Button type="button" onClick={verifyPassword} className="w-full" disabled={isVerifying}>
+                        {isVerifying && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                        {isVerifying ? "Verifying..." : "Verify"}
                       </Button>
                     </div>
                   ) : (
@@ -194,31 +209,23 @@ const Messages = () => {
                       <Input
                         placeholder="Message Title"
                         value={newMessage.title}
-                        onChange={(e) =>
-                          setNewMessage({ ...newMessage, title: e.target.value })
-                        }
+                        onChange={(e) => setNewMessage((prev) => ({ ...prev, title: e.target.value }))}
                         className="border-border/50"
                       />
                       <Input
                         type="date"
                         value={newMessage.date}
-                        onChange={(e) =>
-                          setNewMessage({ ...newMessage, date: e.target.value })
-                        }
+                        onChange={(e) => setNewMessage((prev) => ({ ...prev, date: e.target.value }))}
                         className="border-border/50"
                       />
                       <Input
+                        ref={fileInputRef}
                         type="file"
                         accept="audio/*"
-                        onChange={(e) =>
-                          setNewMessage({
-                            ...newMessage,
-                            file: e.target.files?.[0] || null,
-                          })
-                        }
+                        onChange={(e) => setAudioFile(e.target.files?.[0] || null)}
                         className="border-border/50"
                       />
-                      <Button onClick={handleAddMessage} className="w-full" disabled={isUploading}>
+                      <Button type="button" onClick={handleAddMessage} className="w-full" disabled={isUploading}>
                         {isUploading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                         {isUploading ? "Uploading..." : "Add Message"}
                       </Button>
