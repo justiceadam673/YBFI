@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Music, Lock, Plus, Sparkles, Play, Loader2 } from "lucide-react";
+import { Music, Lock, Plus, Sparkles, Play, Loader2, Trash2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,7 +20,7 @@ import dayThreeGospel from "@/assets/audio/day-3-gospel-seminar.mp3";
 
 const Messages = () => {
   const [messages, setMessages] = useState<
-    Array<{ title: string; audio_url: string; date: string }>
+    Array<{ id: string; title: string; audio_url: string; date: string }>
   >([]);
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
@@ -30,6 +30,9 @@ const Messages = () => {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [newMessage, setNewMessage] = useState({ title: "", date: "" });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletePasswordDialog, setDeletePasswordDialog] = useState<string | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
 
   const audioMap: Record<string, string> = {
     "day-1-takeover.mp3": dayOneTakeover,
@@ -44,7 +47,7 @@ const Messages = () => {
   const fetchMessages = async () => {
     const { data, error } = await supabase
       .from("messages")
-      .select("title, audio_url, date")
+      .select("id, title, audio_url, date")
       .order("created_at", { ascending: false });
 
     if (!error && data) {
@@ -87,6 +90,32 @@ const Messages = () => {
       toast({ title: "Verification failed", variant: "destructive" });
     } finally {
       setIsVerifying(false);
+    }
+  };
+
+  const handleDeleteMessage = async (id: string) => {
+    setDeletingId(id);
+    try {
+      const { data } = await supabase.functions.invoke("verify-admin-password", {
+        body: { password: deletePassword, action: "messages_gallery" },
+      });
+      if (!data?.valid) {
+        toast({ title: "Invalid password", variant: "destructive" });
+        return;
+      }
+      const { error } = await supabase.from("messages").delete().eq("id", id);
+      if (error) {
+        toast({ title: "Error deleting message", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Message deleted" });
+        setDeletePasswordDialog(null);
+        setDeletePassword("");
+        fetchMessages();
+      }
+    } catch (err: any) {
+      toast({ title: "Something went wrong", description: err.message, variant: "destructive" });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -244,7 +273,7 @@ const Messages = () => {
               <div className="space-y-6">
                 {messages.map((message, index) => (
                   <Card
-                    key={index}
+                    key={message.id}
                     className="group glass-card border-border/50 hover:shadow-elegant hover:border-primary/20 transition-all duration-500 animate-fade-in overflow-hidden"
                     style={{ animationDelay: `${index * 0.1}s` }}
                   >
@@ -256,9 +285,45 @@ const Messages = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-4">
                             <h3 className="text-lg sm:text-xl font-bold text-foreground group-hover:text-primary transition-colors">{message.title}</h3>
-                            <span className="text-sm text-muted-foreground whitespace-nowrap px-3 py-1 bg-muted/50 rounded-full">
-                              {message.date}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-muted-foreground whitespace-nowrap px-3 py-1 bg-muted/50 rounded-full">
+                                {message.date}
+                              </span>
+                              <Dialog open={deletePasswordDialog === message.id} onOpenChange={(open) => {
+                                setDeletePasswordDialog(open ? message.id : null);
+                                if (!open) setDeletePassword("");
+                              }}>
+                                <DialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="glass-card border-border/50">
+                                  <DialogHeader>
+                                    <DialogTitle>Delete Message</DialogTitle>
+                                  </DialogHeader>
+                                  <p className="text-sm text-muted-foreground">Enter admin password to delete "{message.title}"</p>
+                                  <Input
+                                    type="password"
+                                    placeholder="Admin Password"
+                                    value={deletePassword}
+                                    onChange={(e) => setDeletePassword(e.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && !deletingId && handleDeleteMessage(message.id)}
+                                    className="border-border/50"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    onClick={() => handleDeleteMessage(message.id)}
+                                    disabled={deletingId === message.id}
+                                    className="w-full"
+                                  >
+                                    {deletingId === message.id && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                                    {deletingId === message.id ? "Deleting..." : "Delete"}
+                                  </Button>
+                                </DialogContent>
+                              </Dialog>
+                            </div>
                           </div>
                           <audio controls className="w-full rounded-lg" preload="metadata">
                             <source src={message.audio_url} type="audio/mpeg" />
