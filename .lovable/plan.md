@@ -1,91 +1,43 @@
 
-## Fix Message Upload Reliability + Visible Loading Spinner
 
-### What I found
-I checked the current `Messages` page implementation and backend configuration end-to-end:
+## Plan: Speaker Field, Pagination, and Voice Recording for Messages
 
-- File storage bucket for messages exists and allows uploads.
-- Messages table insert policy allows inserts.
-- Admin password verification backend function is working and returns valid responses.
-- So this is most likely a frontend flow/state issue, not a backend permission issue.
+### 1. Database Migration
+Add two new nullable columns to the `messages` table:
+- `speaker` (text, nullable) -- speaker/preacher name
+- `is_voice_note` (boolean, default false) -- to distinguish voice notes from uploaded messages for styling
 
-The current UI already has an upload spinner state, but it can fail to appear when the handler exits early (especially if file state is lost or validation fails silently from the user perspective).
+### 2. Speaker Field in Add Message Dialog
+- Add a "Speaker / Preacher Name" input field to both the Add Message form and the Record Voice Note form
+- Display the speaker name on each message card (below the title)
+- Add a search/filter input above the messages list to filter by speaker name (client-side filter on fetched data, or query param)
 
-### Implementation approach
+### 3. Pagination (10 per page)
+- Add `currentPage` state, default 1
+- Fetch all messages but display only 10 per page using slice
+- Add pagination controls (Previous / page numbers / Next) below the messages list using the existing `Pagination` UI components
 
-### 1) Make file handling reliable in `src/pages/Messages.tsx`
-- Add `audioFile` as its own state (`File | null`) instead of nesting file inside `newMessage`.
-- Keep `newMessage` for text fields only (`title`, `date`).
-- Use functional state updates for text fields:
-  - `setNewMessage((prev) => ({ ...prev, title: ... }))`
-  - `setNewMessage((prev) => ({ ...prev, date: ... }))`
-- Add `fileInputRef` so the file input can be reset safely after success.
+### 4. Record Voice Note Button + Dialog
+- Add a "Record Voice Note" button next to "Add Message" with a distinct color (e.g., a red/rose variant)
+- New dialog with:
+  - Admin password gate (reuse same pattern)
+  - Title input + Speaker input
+  - Record controls: Start / Stop / Play preview using `MediaRecorder` API
+  - Visual recording indicator (pulsing red dot + elapsed time)
+  - Save button that uploads the recorded blob to the `messages` storage bucket and inserts a DB row with `is_voice_note = true`
+- Uses `navigator.mediaDevices.getUserMedia({ audio: true })` for live mic access
+- Records to webm/opus format, uploads as-is
 
-Why: this removes accidental overwrite risk and makes validation deterministic.
+### 5. Visual Distinction for Voice Notes
+- Voice note cards use a different gradient icon color (e.g., rose/red gradient with a Mic icon instead of Play)
+- Subtle left border accent or different card background tint to distinguish from uploaded messages
 
-### 2) Add a dedicated loader for password verification
-- Add `isVerifying` state.
-- In `verifyPassword`, set `isVerifying(true)` before invoking backend and always reset in `finally`.
-- Disable Verify button while verifying.
-- Show `<Loader2 className="animate-spin" />` + “Verifying...” text.
+### Files to modify
+- **Database migration**: Add `speaker` and `is_voice_note` columns
+- **`src/pages/Messages.tsx`**: All UI changes (speaker field, pagination, recording dialog, card styling)
 
-Why: user gets immediate feedback for the first step of the upload flow too.
+### Technical Notes
+- `MediaRecorder` API is well-supported in modern browsers; no extra dependencies needed
+- Audio is recorded as `audio/webm` blob, uploaded to the existing `messages` storage bucket
+- Pagination is client-side since message counts should be manageable; can switch to server-side if needed later
 
-### 3) Harden the upload handler for clear UX and easier debugging
-In `handleAddMessage`:
-- Guard against re-entry: return early if `isUploading` is already true.
-- Validate `title`, `date`, and `audioFile` (not nested object file).
-- Keep `setIsUploading(true)`/`finally setIsUploading(false)` as strict envelope.
-- Upload file with explicit options (`upsert: false`, optional `contentType: audioFile.type`).
-- Build public URL from returned upload path.
-- Insert DB row only after successful upload.
-- Use safe error extraction in toasts:
-  - `error?.message || JSON.stringify(error)`
-- Add clear step logs:
-  - start upload
-  - upload success
-  - db insert success/failure
-
-Why: guarantees spinner lifecycle and gives actionable error feedback if anything fails.
-
-### 4) Ensure button behavior is explicit
-- Set `type="button"` on Verify and Add Message buttons.
-- Keep Add Message button disabled while `isUploading`.
-- Add spinner+text swap for Add Message:
-  - `Uploading...` with animated loader icon.
-
-Why: prevents accidental default submit behavior and ensures visible progress state.
-
-### 5) Reset dialog/form state cleanly after success and close
-After successful upload:
-- reset title/date
-- reset `audioFile`
-- clear file input DOM value via ref
-- close dialog
-- clear auth/password state
-- refetch messages list
-
-Also handle dialog close (`onOpenChange`) to optionally clear stale form/auth state so reopening starts clean.
-
----
-
-## Technical change scope
-
-### File to modify
-- `src/pages/Messages.tsx`
-
-### No backend schema/policy changes needed
-- Database and storage access are already correctly configured for this flow.
-
----
-
-## Acceptance checklist (what I will verify after implementing)
-
-1. Verify button shows spinner and disables while checking password.
-2. Add Message button shows spinner and disables while uploading.
-3. Successful upload:
-   - file appears in storage bucket,
-   - message row is inserted in database,
-   - new card appears immediately after refresh/fetch.
-4. Failed upload/insert shows descriptive error toast.
-5. Reopening dialog does not keep stale file/password state.
