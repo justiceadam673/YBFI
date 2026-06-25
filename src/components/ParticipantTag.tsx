@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { Button } from "@/components/ui/button";
-import { Camera, Download, User, Calendar, MapPin, Mail, Phone } from "lucide-react";
+import { Camera, Download, User, Calendar, MapPin, Mail, Phone, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface ParticipantTagData {
   name: string;
