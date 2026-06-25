@@ -15,6 +15,7 @@ import Books from "./pages/Books";
 import AdminQA from "./pages/AdminQA";
 import AdminAnnouncements from "./pages/AdminAnnouncements";
 import AdminUsers from "./pages/AdminUsers";
+import AdminParticipants from "./pages/AdminParticipants";
 import Registration from "./pages/Registration";
 import VisionsDreams from "./pages/VisionsDreams";
 import GospelBuddy from "./pages/GospelBuddy";
