@@ -367,6 +367,12 @@ const Registration = () => {
     }
     setSubmitting(true);
 
+    const prefix = (selectedProgram.title || "YBFI")
+      .replace(/[^a-zA-Z]/g, "")
+      .slice(0, 4)
+      .toUpperCase() || "YBFI";
+    const participantCode = `${prefix}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+
     const { error } = await supabase.from("program_registrations").insert({
       program_id: selectedProgram.id,
       user_id: user!.id,
@@ -377,6 +383,7 @@ const Registration = () => {
       denomination: regForm.denomination || null,
       special_request: regForm.special_request || null,
       custom_field_values: customFieldValues as unknown as any,
+      participant_code: participantCode,
     });
 
     if (error) {
@@ -389,6 +396,19 @@ const Registration = () => {
       toast({ title: "Registered!", description: `You have successfully registered for ${selectedProgram.title}.` });
       setUserRegistrations(prev => new Set(prev).add(selectedProgram.id));
       setRegDialogOpen(false);
+      setTagData({
+        name: regForm.name,
+        email: regForm.email,
+        phone: regForm.phone,
+        gender: regForm.gender,
+        denomination: regForm.denomination || null,
+        programTitle: selectedProgram.title,
+        startDate: selectedProgram.start_date,
+        endDate: selectedProgram.end_date,
+        location: selectedProgram.location,
+        participantCode,
+      });
+      setTagDialogOpen(true);
       setRegForm(prev => ({ ...prev, phone: "", gender: "", denomination: "", special_request: "" }));
       setCustomFieldValues({});
     }
