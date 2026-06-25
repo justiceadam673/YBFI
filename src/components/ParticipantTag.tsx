@@ -114,7 +114,7 @@ const ParticipantTag = ({ data }: { data: ParticipantTagData }) => {
         <div className="relative mt-4 flex justify-center">
           <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-secondary bg-primary-foreground/10 shadow-lg">
             {photo ? (
-              <img src={photo} alt={data.name} className="h-full w-full object-cover" />
+              <img src={photo} alt={data.name} crossOrigin="anonymous" className="h-full w-full object-cover" />
             ) : (
               <User className="h-12 w-12 text-primary-foreground/60" />
             )}
