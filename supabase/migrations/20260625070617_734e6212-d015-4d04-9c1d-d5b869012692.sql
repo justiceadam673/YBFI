@@ -1,0 +1,2 @@
+ALTER TABLE public.program_registrations ADD COLUMN IF NOT EXISTS participant_code text;
+ALTER TABLE public.program_registrations ADD CONSTRAINT program_registrations_participant_code_key UNIQUE (participant_code);

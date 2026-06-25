@@ -1,91 +1,43 @@
+## Plan: Beautiful Participant Tag Card with Unique Code & Photo
 
-## Fix Message Upload Reliability + Visible Loading Spinner
+### What the user gets
+After successfully registering for a program, a beautiful **Participant Tag Card** appears in a dialog showing their name, program details, an image slot, and a unique identity code. They can upload their own photo into the slot, then download the tag as an image.
 
-### What I found
-I checked the current `Messages` page implementation and backend configuration end-to-end:
+### 1. Database Change
+Add a `participant_code` column to `program_registrations`:
+- `participant_code` (text, unique, nullable) — a short human-friendly code like `YBFI-7K3M9Q`
+- Generated client-side at registration time (e.g. program prefix + random 6-char base36), checked unique via the unique constraint
 
-- File storage bucket for messages exists and allows uploads.
-- Messages table insert policy allows inserts.
-- Admin password verification backend function is working and returns valid responses.
-- So this is most likely a frontend flow/state issue, not a backend permission issue.
+### 2. New Component: `ParticipantTag.tsx`
+A polished, attractive ID-badge style card built with the existing design tokens (blue/white/gold, glass morphism, gradients). Contents:
+- Header with YBFI branding/logo accent and program title
+- Circular photo slot (placeholder avatar icon when empty) with an "Upload Photo" button
+- Participant name (large), email, phone, gender, denomination
+- Program dates & location
+- A highlighted **unique code** block at the bottom (monospace, with a subtle badge / "Participant ID" label)
+- Decorative gradient background and gold accents for an attractive look
 
-The current UI already has an upload spinner state, but it can fail to appear when the handler exits early (especially if file state is lost or validation fails silently from the user perspective).
+### 3. Photo Upload Slot
+- A file input lets the user pick an image before downloading
+- The chosen image is shown in the circular slot (object URL preview)
+- Accepts jpeg/png/webp (consistent with existing image handling)
 
-### Implementation approach
+### 4. Download as Image
+- Add the `html-to-image` package
+- A "Download Tag" button captures the tag card DOM node to PNG and triggers download (`<name>-ybfi-tag.png`)
 
-### 1) Make file handling reliable in `src/pages/Messages.tsx`
-- Add `audioFile` as its own state (`File | null`) instead of nesting file inside `newMessage`.
-- Keep `newMessage` for text fields only (`title`, `date`).
-- Use functional state updates for text fields:
-  - `setNewMessage((prev) => ({ ...prev, title: ... }))`
-  - `setNewMessage((prev) => ({ ...prev, date: ... }))`
-- Add `fileInputRef` so the file input can be reset safely after success.
+### 5. Wire into Registration flow
+In `src/pages/Registration.tsx`:
+- Generate `participant_code` and include it in the insert in `handleRegister`
+- On success, instead of just a toast, open a new **Tag dialog** showing `<ParticipantTag>` populated with the just-submitted details and code
+- Keep the existing "Registered" disabled-button behavior intact
 
-Why: this removes accidental overwrite risk and makes validation deterministic.
+### Files
+- **Migration**: add `participant_code` unique column
+- **New** `src/components/ParticipantTag.tsx`
+- **Modify** `src/pages/Registration.tsx` — generate code, store it, open tag dialog after register
+- **Add dependency**: `html-to-image`
 
-### 2) Add a dedicated loader for password verification
-- Add `isVerifying` state.
-- In `verifyPassword`, set `isVerifying(true)` before invoking backend and always reset in `finally`.
-- Disable Verify button while verifying.
-- Show `<Loader2 className="animate-spin" />` + “Verifying...” text.
-
-Why: user gets immediate feedback for the first step of the upload flow too.
-
-### 3) Harden the upload handler for clear UX and easier debugging
-In `handleAddMessage`:
-- Guard against re-entry: return early if `isUploading` is already true.
-- Validate `title`, `date`, and `audioFile` (not nested object file).
-- Keep `setIsUploading(true)`/`finally setIsUploading(false)` as strict envelope.
-- Upload file with explicit options (`upsert: false`, optional `contentType: audioFile.type`).
-- Build public URL from returned upload path.
-- Insert DB row only after successful upload.
-- Use safe error extraction in toasts:
-  - `error?.message || JSON.stringify(error)`
-- Add clear step logs:
-  - start upload
-  - upload success
-  - db insert success/failure
-
-Why: guarantees spinner lifecycle and gives actionable error feedback if anything fails.
-
-### 4) Ensure button behavior is explicit
-- Set `type="button"` on Verify and Add Message buttons.
-- Keep Add Message button disabled while `isUploading`.
-- Add spinner+text swap for Add Message:
-  - `Uploading...` with animated loader icon.
-
-Why: prevents accidental default submit behavior and ensures visible progress state.
-
-### 5) Reset dialog/form state cleanly after success and close
-After successful upload:
-- reset title/date
-- reset `audioFile`
-- clear file input DOM value via ref
-- close dialog
-- clear auth/password state
-- refetch messages list
-
-Also handle dialog close (`onOpenChange`) to optionally clear stale form/auth state so reopening starts clean.
-
----
-
-## Technical change scope
-
-### File to modify
-- `src/pages/Messages.tsx`
-
-### No backend schema/policy changes needed
-- Database and storage access are already correctly configured for this flow.
-
----
-
-## Acceptance checklist (what I will verify after implementing)
-
-1. Verify button shows spinner and disables while checking password.
-2. Add Message button shows spinner and disables while uploading.
-3. Successful upload:
-   - file appears in storage bucket,
-   - message row is inserted in database,
-   - new card appears immediately after refresh/fetch.
-4. Failed upload/insert shows descriptive error toast.
-5. Reopening dialog does not keep stale file/password state.
+### Notes
+- The photo is only embedded into the downloadable tag image; it is not uploaded to storage (no backend storage needed for the tag photo). If you'd prefer the photo saved to the cloud too, say so and I'll add that.
+- Unique code uniqueness is enforced by the DB constraint with a small retry on collision.

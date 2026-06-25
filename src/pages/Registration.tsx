@@ -18,6 +18,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, MapPin, Users, Plus, ClipboardList, Loader2, ImageIcon, Trash2, Copy, Mail, Pencil, X } from "lucide-react";
 import { format } from "date-fns";
+import ParticipantTag, { ParticipantTagData } from "@/components/ParticipantTag";
 
 interface CustomField {
   id: string;
@@ -72,6 +73,8 @@ const Registration = () => {
   const [loadingRegistrations, setLoadingRegistrations] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [userRegistrations, setUserRegistrations] = useState<Set<string>>(new Set());
+  const [tagDialogOpen, setTagDialogOpen] = useState(false);
+  const [tagData, setTagData] = useState<ParticipantTagData | null>(null);
 
   // Edit program state
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
@@ -364,6 +367,12 @@ const Registration = () => {
     }
     setSubmitting(true);
 
+    const prefix = (selectedProgram.title || "YBFI")
+      .replace(/[^a-zA-Z]/g, "")
+      .slice(0, 4)
+      .toUpperCase() || "YBFI";
+    const participantCode = `${prefix}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+
     const { error } = await supabase.from("program_registrations").insert({
       program_id: selectedProgram.id,
       user_id: user!.id,
@@ -374,6 +383,7 @@ const Registration = () => {
       denomination: regForm.denomination || null,
       special_request: regForm.special_request || null,
       custom_field_values: customFieldValues as unknown as any,
+      participant_code: participantCode,
     });
 
     if (error) {
@@ -386,6 +396,19 @@ const Registration = () => {
       toast({ title: "Registered!", description: `You have successfully registered for ${selectedProgram.title}.` });
       setUserRegistrations(prev => new Set(prev).add(selectedProgram.id));
       setRegDialogOpen(false);
+      setTagData({
+        name: regForm.name,
+        email: regForm.email,
+        phone: regForm.phone,
+        gender: regForm.gender,
+        denomination: regForm.denomination || null,
+        programTitle: selectedProgram.title,
+        startDate: selectedProgram.start_date,
+        endDate: selectedProgram.end_date,
+        location: selectedProgram.location,
+        participantCode,
+      });
+      setTagDialogOpen(true);
       setRegForm(prev => ({ ...prev, phone: "", gender: "", denomination: "", special_request: "" }));
       setCustomFieldValues({});
     }
@@ -891,6 +914,20 @@ const Registration = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Participant Tag Dialog */}
+      <Dialog open={tagDialogOpen} onOpenChange={setTagDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Your Participant Tag</DialogTitle>
+            <DialogDescription>
+              Add your photo, then download your personalized participant tag with your unique ID.
+            </DialogDescription>
+          </DialogHeader>
+          {tagData && <ParticipantTag data={tagData} />}
+        </DialogContent>
+      </Dialog>
+
 
       <Footer />
     </div>
