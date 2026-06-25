@@ -24,20 +24,44 @@ const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
 const ParticipantTag = ({ data }: { data: ParticipantTagData }) => {
   const tagRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<string | null>(data.photoUrl ?? null);
   const [downloading, setDownloading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
 
-  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!ALLOWED.includes(file.type)) {
       toast({ title: "Unsupported format", description: "Please upload a JPG, PNG, or WEBP image.", variant: "destructive" });
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => setPhoto(reader.result as string);
-    reader.readAsDataURL(file);
+
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `participant-photos/${data.participantCode}-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("program-images")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (uploadError) throw uploadError;
+
+      const { data: pub } = supabase.storage.from("program-images").getPublicUrl(path);
+      const publicUrl = pub.publicUrl;
+
+      const { error: updateError } = await supabase
+        .from("program_registrations")
+        .update({ photo_url: publicUrl })
+        .eq("participant_code", data.participantCode);
+      if (updateError) throw updateError;
+
+      setPhoto(publicUrl);
+      toast({ title: "Photo saved", description: "Your tag photo has been saved." });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message || "Could not save photo.", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleDownload = async () => {
