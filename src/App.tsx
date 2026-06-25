@@ -15,6 +15,7 @@ import Books from "./pages/Books";
 import AdminQA from "./pages/AdminQA";
 import AdminAnnouncements from "./pages/AdminAnnouncements";
 import AdminUsers from "./pages/AdminUsers";
+import AdminParticipants from "./pages/AdminParticipants";
 import Registration from "./pages/Registration";
 import VisionsDreams from "./pages/VisionsDreams";
 import GospelBuddy from "./pages/GospelBuddy";
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/admin-qa" element={<ProtectedRoute><AdminQA /></ProtectedRoute>} />
             <Route path="/admin-announcements" element={<ProtectedRoute><AdminAnnouncements /></ProtectedRoute>} />
             <Route path="/admin-users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
+            <Route path="/admin-participants" element={<ProtectedRoute><AdminParticipants /></ProtectedRoute>} />
             <Route path="/registration" element={<ProtectedRoute><Registration /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
