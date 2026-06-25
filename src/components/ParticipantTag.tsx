@@ -178,9 +178,9 @@ const ParticipantTag = ({ data }: { data: ParticipantTagData }) => {
           className="hidden"
           onChange={handlePhoto}
         />
-        <Button variant="outline" className="flex-1" onClick={() => fileInputRef.current?.click()}>
-          <Camera className="mr-1 h-4 w-4" />
-          {photo ? "Change Photo" : "Add Photo"}
+        <Button variant="outline" className="flex-1" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+          {uploading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Camera className="mr-1 h-4 w-4" />}
+          {uploading ? "Uploading..." : photo ? "Change Photo" : "Add Photo"}
         </Button>
         <Button className="flex-1" onClick={handleDownload} disabled={downloading}>
           <Download className="mr-1 h-4 w-4" />
