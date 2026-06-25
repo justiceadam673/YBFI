@@ -915,6 +915,20 @@ const Registration = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Participant Tag Dialog */}
+      <Dialog open={tagDialogOpen} onOpenChange={setTagDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Your Participant Tag</DialogTitle>
+            <DialogDescription>
+              Add your photo, then download your personalized participant tag with your unique ID.
+            </DialogDescription>
+          </DialogHeader>
+          {tagData && <ParticipantTag data={tagData} />}
+        </DialogContent>
+      </Dialog>
+
+
       <Footer />
     </div>
   );
