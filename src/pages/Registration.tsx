@@ -73,6 +73,8 @@ const Registration = () => {
   const [loadingRegistrations, setLoadingRegistrations] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [userRegistrations, setUserRegistrations] = useState<Set<string>>(new Set());
+  const [tagDialogOpen, setTagDialogOpen] = useState(false);
+  const [tagData, setTagData] = useState<ParticipantTagData | null>(null);
 
   // Edit program state
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
