@@ -18,6 +18,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, MapPin, Users, Plus, ClipboardList, Loader2, ImageIcon, Trash2, Copy, Mail, Pencil, X } from "lucide-react";
 import { format } from "date-fns";
+import ParticipantTag, { ParticipantTagData } from "@/components/ParticipantTag";
 
 interface CustomField {
   id: string;
