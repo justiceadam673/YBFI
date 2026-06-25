@@ -17,6 +17,7 @@ export interface ParticipantTagData {
   endDate?: string;
   location?: string | null;
   participantCode: string;
+  photoUrl?: string | null;
 }
 
 const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
