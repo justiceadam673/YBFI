@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { Button } from "@/components/ui/button";
-import { Camera, Download, User, Calendar, MapPin, Mail, Phone } from "lucide-react";
+import { Camera, Download, User, Calendar, MapPin, Mail, Phone, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface ParticipantTagData {
   name: string;
@@ -16,6 +17,7 @@ export interface ParticipantTagData {
   endDate?: string;
   location?: string | null;
   participantCode: string;
+  photoUrl?: string | null;
 }
 
 const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
@@ -23,20 +25,44 @@ const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
 const ParticipantTag = ({ data }: { data: ParticipantTagData }) => {
   const tagRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<string | null>(data.photoUrl ?? null);
   const [downloading, setDownloading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
 
-  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!ALLOWED.includes(file.type)) {
       toast({ title: "Unsupported format", description: "Please upload a JPG, PNG, or WEBP image.", variant: "destructive" });
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => setPhoto(reader.result as string);
-    reader.readAsDataURL(file);
+
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `participant-photos/${data.participantCode}-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("program-images")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (uploadError) throw uploadError;
+
+      const { data: pub } = supabase.storage.from("program-images").getPublicUrl(path);
+      const publicUrl = pub.publicUrl;
+
+      const { error: updateError } = await supabase
+        .from("program_registrations")
+        .update({ photo_url: publicUrl })
+        .eq("participant_code", data.participantCode);
+      if (updateError) throw updateError;
+
+      setPhoto(publicUrl);
+      toast({ title: "Photo saved", description: "Your tag photo has been saved." });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message || "Could not save photo.", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleDownload = async () => {
@@ -88,7 +114,7 @@ const ParticipantTag = ({ data }: { data: ParticipantTagData }) => {
         <div className="relative mt-4 flex justify-center">
           <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-secondary bg-primary-foreground/10 shadow-lg">
             {photo ? (
-              <img src={photo} alt={data.name} className="h-full w-full object-cover" />
+              <img src={photo} alt={data.name} crossOrigin="anonymous" className="h-full w-full object-cover" />
             ) : (
               <User className="h-12 w-12 text-primary-foreground/60" />
             )}
@@ -152,9 +178,9 @@ const ParticipantTag = ({ data }: { data: ParticipantTagData }) => {
           className="hidden"
           onChange={handlePhoto}
         />
-        <Button variant="outline" className="flex-1" onClick={() => fileInputRef.current?.click()}>
-          <Camera className="mr-1 h-4 w-4" />
-          {photo ? "Change Photo" : "Add Photo"}
+        <Button variant="outline" className="flex-1" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+          {uploading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Camera className="mr-1 h-4 w-4" />}
+          {uploading ? "Uploading..." : photo ? "Change Photo" : "Add Photo"}
         </Button>
         <Button className="flex-1" onClick={handleDownload} disabled={downloading}>
           <Download className="mr-1 h-4 w-4" />

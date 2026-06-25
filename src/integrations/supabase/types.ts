@@ -365,6 +365,7 @@ export type Database = {
           name: string
           participant_code: string | null
           phone: string
+          photo_url: string | null
           program_id: string
           special_request: string | null
           status: string
@@ -380,6 +381,7 @@ export type Database = {
           name: string
           participant_code?: string | null
           phone: string
+          photo_url?: string | null
           program_id: string
           special_request?: string | null
           status?: string
@@ -395,6 +397,7 @@ export type Database = {
           name?: string
           participant_code?: string | null
           phone?: string
+          photo_url?: string | null
           program_id?: string
           special_request?: string | null
           status?: string

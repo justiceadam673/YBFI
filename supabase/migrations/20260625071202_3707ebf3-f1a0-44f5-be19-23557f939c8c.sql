@@ -1,0 +1,1 @@
+ALTER TABLE public.program_registrations ADD COLUMN IF NOT EXISTS photo_url text;
