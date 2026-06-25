@@ -186,6 +186,12 @@ const Navbar = () => {
                     Manage Users
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to='/admin-participants' className='w-full cursor-pointer flex items-center gap-2'>
+                    <Search className="h-4 w-4" />
+                    Participant Lookup
+                  </Link>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
